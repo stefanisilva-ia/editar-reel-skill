@@ -10,7 +10,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from cartelas import ALTURA, LARGURA, desenhar, desenhar_imagem
+from cartelas import ALTURA, LARGURA, desenhar, desenhar_cartao, desenhar_imagem
 from plano import linha_do_tempo, tempos
 
 FPS = 30
@@ -140,6 +140,10 @@ def renderizar(pasta, plano):
         png = pasta_cartelas / f"print-{n:02d}.png"
         desenhar_imagem(im, plano["estilo"], png)
         camadas.append((png, im))
+    for n, c in enumerate(t["cartoes"], 1):
+        png = pasta_cartelas / f"cartao-{n:02d}.png"
+        desenhar_cartao(c, plano["estilo"], png)
+        camadas.append((png, c))
     for n, tx in enumerate(t["textos"], 1):
         png = pasta_cartelas / f"texto-{n:02d}.png"
         desenhar(tx, plano["estilo"], png)

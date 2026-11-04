@@ -110,11 +110,11 @@ def separar(texto, tipo, maiusculas=False):
     """Quebra o texto em palavras e marca quais vão em destaque."""
     saida, marcando = [], False
     for bruta in texto.split():
-        limpa = bruta.strip("*")
+        limpa = bruta.replace("*", "")
         if not limpa:
             continue
         abre = bruta.startswith("*")
-        fecha = bruta.endswith("*")
+        fecha = bruta.rstrip(".,;:!?").endswith("*")
         destaque = marcando or abre
         if NUMERO.search(limpa) or ORDINAL.match(limpa):
             destaque = True
@@ -238,3 +238,97 @@ def desenhar_imagem(im_cfg, estilo, destino):
 
     img.save(destino)
     return destino
+
+
+def desenhar_cartao(cfg, estilo, destino):
+    """Cartão ilustrativo gerado na identidade do estilo ativo.
+
+    tipo "numero":  {"valor": "10h", "rotulo": "economizadas por semana"}
+    tipo "lista":   {"titulo": "O que o agente faz", "itens": ["1º atende", "2º agenda"]}
+    tipo "palavra": {"texto": "automação"}
+    posicao: alto, centro (padrão) ou baixo.
+    """
+    tipo = cfg["tipo"]
+    caminho_fonte = achar_fonte(estilo.get("fonte"))
+    cor_texto = _cor(estilo["cor_texto"])
+    cor_dest = _cor(estilo["cor_destaque"])
+    fundo = list(_cor(estilo["cor_caixa"]))
+    fundo[3] = max(fundo[3], 235)
+    largura = 860
+    pad = 64
+    raio = int(estilo.get("raio", 28)) + 8
+
+    img = Image.new("RGBA", (LARGURA, ALTURA), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    linhas = []  # (texto, fonte, cor, alinhamento, espaço depois)
+
+    if tipo == "numero":
+        valor = str(cfg["valor"])
+        tam = 190 if len(valor) <= 5 else 140
+        linhas.append(([(valor, True)], _fonte(caminho_fonte, tam), "centro", 18))
+        if cfg.get("rotulo"):
+            f = _fonte(caminho_fonte, 50)
+            for linha in _quebrar_texto(cfg["rotulo"], f, d, largura - 2 * pad):
+                linhas.append(([(linha, False)], f, "centro", 8))
+    elif tipo == "palavra":
+        f = _fonte(caminho_fonte, 104)
+        for linha in _quebrar_texto(cfg["texto"], f, d, largura - 2 * pad):
+            linhas.append(([(linha, True)], f, "centro", 6))
+    else:
+        if cfg.get("titulo"):
+            f = _fonte(caminho_fonte, 58)
+            for linha in _quebrar_texto(cfg["titulo"], f, d, largura - 2 * pad):
+                linhas.append(([(linha, False)], f, "esquerda", 8))
+            linhas[-1] = (*linhas[-1][:3], 34)
+        f = _fonte(caminho_fonte, 50)
+        for item in cfg["itens"]:
+            partes = item.split(maxsplit=1)
+            if len(partes) == 2 and ORDINAL.match(partes[0]):
+                linhas.append(([(partes[0] + " ", True), (partes[1], False)], f, "esquerda", 22))
+            else:
+                linhas.append(([(item, False)], f, "esquerda", 22))
+
+    if estilo.get("maiusculas"):
+        linhas = [([(t.upper(), dest) for t, dest in pedacos], f, al, esp) for pedacos, f, al, esp in linhas]
+
+    alturas = []
+    for pedacos, f, _, esp in linhas:
+        asc, desc = f.getmetrics()
+        alturas.append(asc + desc + esp)
+    conteudo_h = sum(alturas) - linhas[-1][3]
+    caixa_h = conteudo_h + 2 * pad
+    cy = int(ALTURA * {"alto": 0.30, "centro": 0.42, "baixo": 0.58}[cfg.get("posicao", "centro")])
+    x0, y0 = (LARGURA - largura) // 2, cy - caixa_h // 2
+
+    sombra = Image.new("RGBA", (LARGURA, ALTURA), (0, 0, 0, 0))
+    ImageDraw.Draw(sombra).rounded_rectangle([x0, y0 + 16, x0 + largura, y0 + caixa_h + 16], radius=raio, fill=(0, 0, 0, 130))
+    img = Image.alpha_composite(img, sombra.filter(ImageFilter.GaussianBlur(24)))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([x0, y0, x0 + largura, y0 + caixa_h], radius=raio, fill=tuple(fundo))
+    d.rounded_rectangle([x0 + raio, y0, x0 + largura - raio, y0 + 8], radius=4, fill=cor_dest)
+
+    y = y0 + pad
+    for (pedacos, f, alinhamento, _), h in zip(linhas, alturas):
+        w = sum(d.textlength(t, font=f) for t, _ in pedacos)
+        x = x0 + pad if alinhamento == "esquerda" else (LARGURA - w) / 2
+        for t, dest in pedacos:
+            d.text((x, y), t, font=f, fill=cor_dest if dest else cor_texto)
+            x += d.textlength(t, font=f)
+        y += h
+
+    img.save(destino)
+    return destino
+
+
+def _quebrar_texto(texto, fonte, d, largura_max):
+    linhas, atual = [], ""
+    for palavra in texto.split():
+        teste = f"{atual} {palavra}".strip()
+        if atual and d.textlength(teste, font=fonte) > largura_max:
+            linhas.append(atual)
+            atual = palavra
+        else:
+            atual = teste
+    if atual:
+        linhas.append(atual)
+    return linhas

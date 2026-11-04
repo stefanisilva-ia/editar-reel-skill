@@ -4,6 +4,7 @@
   python motor/cli.py transcrever VIDEO [VIDEO2 ...] [--pasta NOME] [--modelo small]
   python motor/cli.py segmentar PASTA [--pausa 0.45]
   python motor/cli.py estilo PASTA_ESTILO [--aplicar PASTA]
+  python motor/cli.py sons
   python motor/cli.py validar PASTA
   python motor/cli.py cartelas PASTA
   python motor/cli.py renderizar PASTA
@@ -95,6 +96,13 @@ def cmd_estilo(a):
         print(f"\nAplicado em {Path(a.aplicar) / 'plano.json'}. Ajuste à mão o que as imagens mostrarem (caixa, maiúsculas).")
 
 
+def cmd_sons(_):
+    from sons import garantir
+    print("Efeitos sonoros básicos (use o caminho no campo 'arquivo' de 'sons'):\n")
+    for nome, (arq, uso) in garantir().items():
+        print(f"  {nome:<8} {arq}\n           {uso}")
+
+
 def cmd_validar(a):
     plano = P.carregar(a.pasta)
     problemas = P.validar(plano, a.pasta)
@@ -108,6 +116,9 @@ def cmd_validar(a):
     linhas = []
     for tx in t["textos"]:
         linhas.append((tx["inicio_final"], tx["fim_final"], f"texto [{tx.get('tipo', 'bloco')}] {tx['texto']}"))
+    for c in t["cartoes"]:
+        desc = c.get("valor") or c.get("texto") or c.get("titulo") or ""
+        linhas.append((c["inicio_final"], c["fim_final"], f"cartão [{c['tipo']}] {desc}"))
     for im in t["imagens"]:
         linhas.append((im["inicio_final"], im["fim_final"], f"print {Path(im['arquivo']).name}"))
     for s in t["sons"]:
@@ -125,6 +136,9 @@ def cmd_cartelas(a):
         print(desenhar(tx, plano["estilo"], destino / f"texto-{n:02d}.png"))
     for n, im in enumerate(plano["imagens"], 1):
         print(desenhar_imagem(im, plano["estilo"], destino / f"print-{n:02d}.png"))
+    from cartelas import desenhar_cartao
+    for n, c in enumerate(plano["cartoes"], 1):
+        print(desenhar_cartao(c, plano["estilo"], destino / f"cartao-{n:02d}.png"))
 
 
 def cmd_renderizar(a):
@@ -147,7 +161,7 @@ def cmd_quadros(a):
         tempos = [float(t) for t in a.tempos.split(",")]
     else:
         t = P.tempos(plano, a.pasta)
-        itens = t["textos"] + t["imagens"]
+        itens = t["textos"] + t["imagens"] + t["cartoes"]
         tempos = sorted({round((i["inicio_final"] + i["fim_final"]) / 2, 2) for i in itens}) or [t["total"] / 2]
     destino = Path(a.pasta) / "quadros"
     destino.mkdir(exist_ok=True)
@@ -178,6 +192,7 @@ def main():
     s.add_argument("pasta_estilo")
     s.add_argument("--aplicar", default=None)
     s.set_defaults(f=cmd_estilo)
+    sub.add_parser("sons").set_defaults(f=cmd_sons)
     for nome, f in (("validar", cmd_validar), ("cartelas", cmd_cartelas), ("renderizar", cmd_renderizar)):
         s = sub.add_parser(nome)
         s.add_argument("pasta")

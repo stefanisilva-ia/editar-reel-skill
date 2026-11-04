@@ -69,7 +69,8 @@ Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continu
 - `transcricao`: a legenda é gerada sozinha a partir da fala, sincronizada com cada palavra, só dos trechos mantidos. Ajustes:
   - `"legenda": {"palavras_por_bloco": 4, "posicao": "baixo"}` (2 a 3 palavras deixa mais dinâmico; 5 a 6, mais calmo).
   - `"correcoes": {"claude code": "Claude Code", "ia": "IA"}` corrige palavras que a transcrição escreveu errado.
-  - Números e ordinais continuam destacados.
+  - `"legenda": {"destaques": ["agente", "agenda"]}` destaca palavras-chave na cor de destaque. Quando a pessoa pedir "destaque as palavras-chave", escolha você: termos centrais do assunto, resultados e a palavra da chamada. De 1 a 2 por frase, no máximo.
+  - Números e ordinais continuam destacados sozinhos.
   - Em `"textos"`, use só `capa` (em `alto`) e `chamada`. Blocos de resumo junto com a legenda poluem a tela.
   - As regras de resumo (6 palavras, resumir) não valem para a legenda: ela reproduz a fala.
 
@@ -90,15 +91,28 @@ Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continu
 - Print com texto na tela no mesmo momento: ponha o texto em `alto` ou `baixo` para não sobrepor.
 - Imagem de terceiros só com confirmação da pessoa, e sempre com `credito`.
 
+**Cartões ilustrativos** (`"cartoes"`): imagens geradas pela skill, na identidade do estilo ativo, para ilustrar o que está sendo falado.
+```json
+{"tipo": "numero", "valor": "10h", "rotulo": "economizadas por semana", "trecho": 3, "atraso": 1.2}
+{"tipo": "lista", "titulo": "O que o agente faz", "itens": ["1º atende", "2º agenda", "3º confirma"], "trecho": 5}
+{"tipo": "palavra", "texto": "automação", "trecho": 7}
+```
+- `numero`: um dado ou resultado falado. `lista`: quando a fala enumera (até 4 itens, numerados com 1º, 2º). `palavra`: um conceito central.
+- `posicao` (padrão `centro`), `ate_trecho`, `duracao` como nos prints.
+- Quando a pessoa pedir "crie imagens que ilustrem a fala", é isto que você cria: um cartão para cada número, lista ou conceito forte, sem cobrir mais que um momento por vez. Nunca invente dado que não foi dito.
+- O que um cartão não representa (um produto, uma tela, um logo, uma pessoa, um lugar) precisa de imagem real: peça à pessoa antes de seguir e use como print.
+
 **Efeitos sonoros** (`"sons"`):
 ```json
 {"arquivo": "/caminho/sons/pop.wav", "trecho": 3, "atraso": 0.5, "volume": 0.7}
 ```
 - Toca por cima da fala, sem mudar de velocidade. `volume` de 0 a 1 (padrão 0.8).
-- A skill não traz sons: use os arquivos que a pessoa indicar. Só sons livres ou dela.
+- Sons da skill: `reel sons` cria e lista pop, click, ding, impacto e whoosh (sintetizados, sem direitos autorais), com o uso indicado de cada um.
+- A pessoa também pode indicar os próprios arquivos. Só sons livres ou dela.
+- "Efeitos quando fizer sentido": reforce números, cartões entrando, itens de lista e a frase mais forte. No máximo um a cada 3 ou 4 segundos, volume entre 0.4 e 0.7. Som em excesso cansa.
 
 **Transições** (no próprio trecho): `"transicao": "fade" | "flash" | "zoom" | "corte"` define como o trecho entra.
-- `corte`: padrão, direto. `fade`: escurece e abre. `flash`: clarão branco rápido. `zoom`: aproximação rápida.
+- `corte`: padrão, direto. `fade`: escurece e abre (é a "transição suave"). `flash`: clarão branco rápido. `zoom`: aproximação rápida.
 - Use pouco: uma transição na troca de vídeo ou de assunto. Em todo trecho, cansa.
 
 #### Regras do modo resumo (obrigatórias)
@@ -122,6 +136,8 @@ Um texto a cada 1 ou 2 trechos é o ritmo certo.
 **Capa:** proponha 3 opções (a ideia central em até 6 palavras) e deixe a pessoa escolher. Nunca escolha sozinho.
 
 ### Estilo
+A pasta de estilo pode estar em qualquer lugar, não só dentro do projeto: use a que a pessoa indicar.
+
 Ordem de prioridade, da mais forte para a mais fraca:
 1. O que a pessoa pedir no texto ("destaque em vermelho", "tudo em maiúsculas").
 2. A pasta `estilo/` do projeto, ou uma pasta de referência que ela indicar.

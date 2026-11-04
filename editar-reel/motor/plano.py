@@ -24,7 +24,8 @@ ESTILO_PADRAO = {
 
 TIPOS = {"capa", "bloco", "lista", "chamada"}
 MODOS_TEXTO = {"resumo", "transcricao"}
-LEGENDA_PADRAO = {"palavras_por_bloco": 4, "posicao": "baixo"}
+LEGENDA_PADRAO = {"palavras_por_bloco": 4, "posicao": "baixo", "destaques": []}
+TIPOS_CARTAO = {"numero", "lista", "palavra"}
 PASTA_SKILL = Path(__file__).resolve().parent.parent
 FIM_DE_FRASE = (".", "?", "!", ",", ";", ":")
 
@@ -57,7 +58,7 @@ def carregar(pasta):
     plano["legenda"] = legenda
     plano.setdefault("correcoes", {})
     plano.setdefault("zoom", {"ativo": True, "fator": 1.12, "altura_rosto": 0.35})
-    for chave in ("trechos", "textos", "imagens", "sons"):
+    for chave in ("trechos", "textos", "imagens", "cartoes", "sons"):
         plano.setdefault(chave, [])
     for t in plano["trechos"]:
         t.setdefault("video", 1)
@@ -140,6 +141,18 @@ def validar(plano, pasta=None):
             problemas.append(f"{rotulo}: posição deve ser uma de {sorted(POSICOES)}.")
         _checar_ancora(im, rotulo, ids, ids_mantidos, problemas)
 
+    for i, c in enumerate(plano["cartoes"], 1):
+        rotulo = f"Cartão {i} ({c.get('tipo')})"
+        if c.get("tipo") not in TIPOS_CARTAO:
+            problemas.append(f"{rotulo}: tipo deve ser um de {sorted(TIPOS_CARTAO)}.")
+        elif c["tipo"] == "numero" and not c.get("valor"):
+            problemas.append(f"{rotulo}: falta 'valor'.")
+        elif c["tipo"] == "lista" and not (1 <= len(c.get("itens") or []) <= 4):
+            problemas.append(f"{rotulo}: 'itens' precisa ter de 1 a 4 itens.")
+        elif c["tipo"] == "palavra" and not c.get("texto"):
+            problemas.append(f"{rotulo}: falta 'texto'.")
+        _checar_ancora(c, rotulo, ids, ids_mantidos, problemas)
+
     for i, s in enumerate(plano["sons"], 1):
         rotulo = f"Som {i} ({s.get('arquivo')})"
         if not s.get("arquivo") or not Path(s["arquivo"]).expanduser().exists():
@@ -207,6 +220,7 @@ def legendas_da_fala(plano, pasta, finais):
     vel = float(plano.get("velocidade") or 1.0)
     n_max = max(1, int(plano["legenda"].get("palavras_por_bloco", 4)))
     correcoes = plano.get("correcoes") or {}
+    destaques = {d.lower() for d in plano["legenda"].get("destaques") or []}
     blocos = []
     for f in finais:
         palavras = [
@@ -229,7 +243,14 @@ def legendas_da_fala(plano, pasta, finais):
             fim = f["inicio_final"] + (blocos[n + 1][1][0]["i"] - f["inicio_original"]) / vel
         else:
             fim = f["fim_final"]
-        texto = " ".join(_corrigir(p["p"], correcoes) for p in grupo).rstrip(".,;:")
+        palavras = []
+        for p in grupo:
+            w = _corrigir(p["p"], correcoes)
+            nucleo = w.rstrip(".,;:!?")
+            if nucleo.strip("\"'").lower() in destaques:
+                w = f"*{nucleo}*{w[len(nucleo):]}"
+            palavras.append(w)
+        texto = " ".join(palavras).rstrip(".,;:")
         saida.append({
             "texto": texto, "tipo": "legenda", "posicao": plano["legenda"].get("posicao", "baixo"),
             "inicio_final": round(max(0.0, ini), 3), "fim_final": round(max(fim, ini + 0.25), 3),
@@ -247,6 +268,7 @@ def tempos(plano, pasta=None):
     return {
         "textos": textos,
         "imagens": _ancorar(plano["imagens"], por_id, total),
+        "cartoes": _ancorar(plano["cartoes"], por_id, total),
         "sons": _ancorar(plano["sons"], por_id, total),
         "total": total,
     }

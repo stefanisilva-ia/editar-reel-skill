@@ -10,7 +10,7 @@ Você grava falando para a câmera, chama `/editar-reel` e recebe o vídeo pront
 2. **Propõe os cortes.** Pausas, tomadas repetidas e frases que começaram erradas. Você aprova antes de qualquer corte.
 3. **Junta vários vídeos.** Rosto e gravação de tela numa edição só, na ordem que você indicar.
 4. **Dá ritmo.** Alterna plano aberto e plano fechado a cada frase, com transições onde você pedir.
-5. **Coloca texto, prints e sons.** Texto na tela em resumo ou como legenda da fala, prints flutuando e efeitos sonoros no momento exato.
+5. **Coloca texto, imagens e sons.** Texto na tela em resumo ou legenda da fala, cartões ilustrativos com números e listas, prints flutuando e efeitos sonoros no momento exato.
 6. **Segue referências de estilo.** Cores, fontes e prints de uma pasta `estilo/` valem para aquele vídeo.
 7. **Exporta em 9:16** e escreve a legenda do post. 1080x1920, pronto para Instagram, TikTok e Shorts.
 
@@ -135,7 +135,7 @@ Põe o pop.wav quando o número "10 horas" aparecer na tela
 e o whoosh.mp3 na entrada do print. Volume baixo nos dois.
 ```
 
-> **O que faz:** encaixa cada som no momento descrito, por cima da fala. **Adapte:** "volume baixo" vira 0.4, "normal" 0.8. A skill não traz sons: use arquivos seus ou de bancos livres.
+> **O que faz:** encaixa cada som no momento descrito, por cima da fala. **Adapte:** "volume baixo" vira 0.4, "normal" 0.8. Sem arquivos seus, a skill usa os próprios: pop, click, ding, impacto e whoosh, criados por ela e livres de direitos autorais.
 
 ### 5. Pedido completo
 
@@ -179,6 +179,23 @@ fonte: Montserrat
 ```
 
 > **O que faz:** lê as cores, a fonte e as imagens de referência e aplica só neste vídeo. Antes de renderizar, o Claude diz qual estilo vai usar. **Adapte:** sem `cores.md`, as cores saem das imagens. Para mudar o seu visual de sempre, peça "salva esse estilo como padrão".
+
+### 8. Deixando o Claude decidir
+
+```
+/editar-reel o vídeo está em ~/reels/agentes/video.mov.
+As referências de estilo (imagens e cores) estão em ~/marca/estilo.
+
+Este vídeo é para o Instagram. Crie imagens que ilustrem e complementem o que está sendo falado, inserindo-as nos momentos correspondentes do vídeo.
+
+Adicione efeitos sonoros quando fizer sentido, especialmente para reforçar informações, palavras ou momentos de destaque. Utilize transições suaves entre as cenas.
+
+Mantenha legendas completas na tela, destacando visualmente palavras-chave e termos de maior ênfase. Quando eu mencionar números ou listar informações, dê destaque visual a esses elementos.
+
+Se precisar de imagens de referência para manter a identidade visual ou representar algo específico, solicite-as antes de prosseguir.
+```
+
+> **O que faz:** aplica o estilo da pasta indicada, gera cartões ilustrativos para números, listas e conceitos (no seu visual), coloca sons da skill nos momentos de destaque, usa fade entre as cenas e legenda completa com palavras-chave destacadas. Para algo que um cartão não representa, como um produto ou uma tela, ele pede a imagem antes. **Adapte:** troque "legendas completas" por "resuma a fala" para o modo resumo.
 
 ### Ajustes depois da entrega
 
@@ -247,12 +264,13 @@ O instalador troca os arquivos da skill e mantém as bibliotecas já baixadas e 
 | Arquivo | Função |
 |---|---|
 | `editar-reel/SKILL.md` | Passo a passo e regras que o Claude segue |
-| `editar-reel/motor/cli.py` | Comandos: checar, transcrever, segmentar, estilo, validar, renderizar, quadros |
+| `editar-reel/motor/cli.py` | Comandos: checar, transcrever, segmentar, estilo, sons, validar, renderizar, quadros |
 | `editar-reel/motor/transcricao.py` | Transcrição local com o tempo de cada palavra |
 | `editar-reel/motor/segmentos.py` | Divide a fala em trechos e cria o plano |
 | `editar-reel/motor/plano.py` | Valida o plano e calcula a linha do tempo final |
-| `editar-reel/motor/cartelas.py` | Desenha o texto na tela e os prints |
+| `editar-reel/motor/cartelas.py` | Desenha o texto na tela, os prints e os cartões |
 | `editar-reel/motor/estilo.py` | Lê a pasta de referências de estilo |
+| `editar-reel/motor/sons.py` | Cria os efeitos sonoros básicos |
 | `editar-reel/estilo-padrao.json` | O seu visual de sempre |
 | `editar-reel/motor/render.py` | Corta, enquadra, dá ritmo e exporta |
 | `instalar.sh` e `instalar.ps1` | Instaladores |
