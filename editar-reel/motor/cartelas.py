@@ -9,7 +9,7 @@ import platform
 import re
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 LARGURA, ALTURA = 1080, 1920
 LARGURA_MAX_TEXTO = 900
@@ -148,6 +148,47 @@ def desenhar(texto_cfg, estilo, destino):
             )
             x += pw + espaco
         y += altura_linha
+
+    img.save(destino)
+    return destino
+
+
+def desenhar_imagem(im_cfg, estilo, destino):
+    """Print flutuando: cantos arredondados, sombra e crédito opcional.
+
+    Campos: arquivo, largura (px, padrão 860), posicao (padrão centro),
+    credito (texto pequeno abaixo, ex: "fonte: site.com").
+    """
+    origem = Image.open(Path(im_cfg["arquivo"]).expanduser())
+    origem = ImageOps.exif_transpose(origem).convert("RGBA")
+    largura = min(int(im_cfg.get("largura", 860)), LARGURA - 80)
+    altura_max = int(ALTURA * 0.5)
+    escala = min(largura / origem.width, altura_max / origem.height)
+    w, h = max(1, int(origem.width * escala)), max(1, int(origem.height * escala))
+    foto = origem.resize((w, h), Image.LANCZOS)
+
+    raio = 28
+    mascara = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mascara).rounded_rectangle([0, 0, w - 1, h - 1], radius=raio, fill=255)
+    foto.putalpha(Image.composite(foto.getchannel("A"), Image.new("L", (w, h), 0), mascara))
+
+    img = Image.new("RGBA", (LARGURA, ALTURA), (0, 0, 0, 0))
+    posicao = im_cfg.get("posicao", "centro")
+    cy = int(ALTURA * {"alto": 0.30, "centro": 0.42, "baixo": 0.62}[posicao])
+    x, y = (LARGURA - w) // 2, cy - h // 2
+
+    sombra = Image.new("RGBA", (LARGURA, ALTURA), (0, 0, 0, 0))
+    ImageDraw.Draw(sombra).rounded_rectangle([x, y + 18, x + w, y + h + 18], radius=raio, fill=(0, 0, 0, 150))
+    img = Image.alpha_composite(img, sombra.filter(ImageFilter.GaussianBlur(26)))
+    img.alpha_composite(foto, (x, y))
+
+    credito = im_cfg.get("credito")
+    if credito:
+        d = ImageDraw.Draw(img)
+        fonte = _fonte(achar_fonte(estilo.get("fonte")), 30)
+        tw = d.textlength(credito, font=fonte)
+        d.text(((LARGURA - tw) / 2, y + h + 22), credito, font=fonte,
+               fill=_cor(estilo["cor_texto"]), stroke_width=3, stroke_fill=(0, 0, 0, 200))
 
     img.save(destino)
     return destino
