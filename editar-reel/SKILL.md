@@ -1,6 +1,6 @@
 ---
 name: editar-reel
-description: Edita reel falado (Instagram, TikTok, Shorts) direto no computador. Transcreve localmente, corta pausas e erros com aprovação, junta vários vídeos, alterna planos, aplica transições, coloca texto na tela, prints e efeitos sonoros e exporta em 9:16. Use quando pedirem "edita esse vídeo", "faz o reel", "junta esses vídeos", "corta as pausas", "coloca o print", "põe um efeito sonoro" ou chamarem /editar-reel.
+description: Edita reel falado (Instagram, TikTok, Shorts) direto no computador. Transcreve localmente, corta pausas e erros com aprovação, junta vários vídeos, alterna planos, aplica transições, coloca texto na tela (resumo ou legenda da fala), prints e efeitos sonoros, segue referências de estilo e exporta em 9:16. Use quando pedirem "edita esse vídeo", "faz o reel", "junta esses vídeos", "corta as pausas", "coloca legenda", "coloca o print", "põe um efeito sonoro", "usa esse estilo" ou chamarem /editar-reel.
 ---
 
 # Editar reel
@@ -24,12 +24,14 @@ Quando a pessoa indicar uma pasta, procure nela:
 meu-reel/
 ├── videos/   01-abertura.mov, 02-demonstracao.mov ...   (a ordem dos nomes é a ordem da edição)
 ├── prints/   painel.png, whatsapp.png ...
-└── sons/     pop.wav, whoosh.mp3 ...
+├── sons/     pop.wav, whoosh.mp3 ...
+└── estilo/   referencia.png, MinhaFonte-Bold.ttf, cores.md ...   (opcional)
 ```
 - Liste a pasta antes de qualquer coisa e mostre o que encontrou.
 - Vídeos numerados (01, 02...) seguem essa ordem. Sem número, pergunte a ordem.
 - Prints e sons: associe cada arquivo ao momento que a pessoa descreveu. Se o nome não deixar claro qual é qual, pergunte.
 - Se a pessoa disser a ordem em texto ("primeiro o vídeo da tela, depois o meu rosto"), a ordem dela vale mais que o nome do arquivo.
+- Pasta `estilo/` presente: ela define o visual desta edição (veja "Estilo").
 
 ## Fluxo
 
@@ -38,6 +40,7 @@ Pergunte só o que faltar, uma pergunta por vez:
 - Quais vídeos e em que ordem.
 - Palavra-chave da chamada final (ex: AGENTE). Se não tiver, a chamada pode ser outra ação curta.
 - Prints, sons ou transições pedidos, e em que momento da fala.
+- Modo do texto: **resumo** (padrão) ou **transcrição** (legenda da fala). Se a pessoa disser "legenda", "transcreve" ou "texto igual à fala", é transcrição. Na dúvida, pergunte.
 - Velocidade. Padrão 1.0; 1.1 deixa a fala mais dinâmica.
 
 ### 2. Transcrever
@@ -61,7 +64,16 @@ Se a frase mais forte está no meio, proponha abrir por ela: preencha `"ordem": 
 ### 4. Montar o plano
 Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continua no lugar certo mesmo se os cortes mudarem. `atraso` (segundos depois do início do trecho) acerta o momento exato, por exemplo quando a palavra é dita: confira o tempo da palavra no `transcricao.json`.
 
-**Texto na tela** (`"textos"`):
+**Modo do texto** (`"modo_texto"`): escolha da pessoa, por pedido.
+- `resumo` (padrão): você escreve os blocos em `"textos"` seguindo as regras de resumo abaixo.
+- `transcricao`: a legenda é gerada sozinha a partir da fala, sincronizada com cada palavra, só dos trechos mantidos. Ajustes:
+  - `"legenda": {"palavras_por_bloco": 4, "posicao": "baixo"}` (2 a 3 palavras deixa mais dinâmico; 5 a 6, mais calmo).
+  - `"correcoes": {"claude code": "Claude Code", "ia": "IA"}` corrige palavras que a transcrição escreveu errado.
+  - Números e ordinais continuam destacados.
+  - Em `"textos"`, use só `capa` (em `alto`) e `chamada`. Blocos de resumo junto com a legenda poluem a tela.
+  - As regras de resumo (6 palavras, resumir) não valem para a legenda: ela reproduz a fala.
+
+**Texto na tela no modo resumo** (`"textos"`):
 ```json
 {"texto": "pronto em 10 minutos", "tipo": "bloco", "trecho": 4}
 ```
@@ -89,7 +101,7 @@ Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continu
 - `corte`: padrão, direto. `fade`: escurece e abre. `flash`: clarão branco rápido. `zoom`: aproximação rápida.
 - Use pouco: uma transição na troca de vídeo ou de assunto. Em todo trecho, cansa.
 
-#### Regras do texto na tela (obrigatórias)
+#### Regras do modo resumo (obrigatórias)
 - **Máximo de 6 palavras por bloco.** O comando `validar` recusa mais que isso.
 - **Resuma a fala, nunca transcreva.** O texto é a ideia em poucas palavras, não legenda.
 - **Destaque números, resultados e a palavra-chave da chamada.**
@@ -108,6 +120,19 @@ Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continu
 Um texto a cada 1 ou 2 trechos é o ritmo certo.
 
 **Capa:** proponha 3 opções (a ideia central em até 6 palavras) e deixe a pessoa escolher. Nunca escolha sozinho.
+
+### Estilo
+Ordem de prioridade, da mais forte para a mais fraca:
+1. O que a pessoa pedir no texto ("destaque em vermelho", "tudo em maiúsculas").
+2. A pasta `estilo/` do projeto, ou uma pasta de referência que ela indicar.
+3. O `estilo-padrao.json` desta skill (o visual de sempre da pessoa).
+
+Com uma pasta de estilo:
+1. Rode `reel estilo PASTA_ESTILO --aplicar PASTA`. Ele lê cores de imagens e de arquivos `.txt`/`.md` (linhas como `destaque: #FF5A1F` ou `fonte: Montserrat` valem direto) e usa a fonte `.ttf`/`.otf` que estiver lá.
+2. Abra as imagens de referência e olhe o que a cor não mostra: texto em caixa ou solto (`"caixa": false`), maiúsculas (`"maiusculas": true`), cantos (`"raio"`), tamanho (`"tamanho"`). Ajuste o `"estilo"` do plano.
+3. Diga à pessoa, em uma linha, o estilo que vai usar (cores, fonte, caixa) antes de renderizar.
+
+Chaves de `"estilo"`: `cor_texto`, `cor_destaque`, `cor_caixa` (com transparência no fim, ex: `#03332CD9`), `caixa` (true ou false), `cor_contorno` (usado quando não há caixa), `raio`, `fonte` (caminho de um .ttf/.otf ou nome de uma fonte instalada, ex: `"Montserrat"`), `tamanho`, `maiusculas`. O que ficar vazio vem do `estilo-padrao.json`.
 
 ### 5. Validar
 `reel validar PASTA`
@@ -135,7 +160,10 @@ Tira um quadro no meio de cada texto e print e salva em `PASTA/quadros/`. Abra e
 - "põe uma transição entre os vídeos": `"transicao"` no primeiro trecho do segundo vídeo.
 - "sem zoom": `"zoom": {"ativo": false}`.
 - "acelera": `"velocidade": 1.1`.
-- "muda a cor": `"estilo": {"cor_destaque": "#HEX"}`. Também dá para trocar `cor_texto`, `cor_caixa` (com transparência no fim, ex: `#000000B8`), `tamanho`, `maiusculas` e `fonte` (caminho de um .ttf ou .otf).
+- "muda a cor": `"estilo": {"cor_destaque": "#HEX"}` (demais chaves em "Estilo").
+- "coloca legenda" ou "agora resume": troque `"modo_texto"` e ajuste `"textos"` como descrito em "Modo do texto".
+- "legenda mais rápida": `"palavras_por_bloco": 2` ou `3`.
+- "muda o meu estilo padrão": edite o `estilo-padrao.json` da skill (só quando a pessoa pedir que seja o padrão de sempre).
 - Rosto cortado no plano fechado: `"zoom": {"altura_rosto": 0.3}` (0 é o topo, 1 é a base).
 
 ## Regras gerais

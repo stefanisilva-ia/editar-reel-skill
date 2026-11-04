@@ -1,0 +1,12 @@
+{
+  "_sobre": "Estilo usado quando o pedido não traz referências nem uma pasta estilo/. Troque pelos seus valores. O instalador mantém este arquivo nas atualizações.",
+  "cor_texto": "#FFFFFF",
+  "cor_destaque": "#DFAC16",
+  "cor_caixa": "#03332CD9",
+  "cor_contorno": "#000000",
+  "caixa": true,
+  "raio": 24,
+  "fonte": "Montserrat",
+  "tamanho": 68,
+  "maiusculas": false
+}

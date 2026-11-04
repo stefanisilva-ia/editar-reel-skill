@@ -4,6 +4,10 @@ Destaque automático (na cor_destaque):
   - palavras entre asteriscos: "pronto em *10 minutos*"
   - números e ordinais: 10, 24H, 3x, 1º, 2º
   - na chamada final, palavras em MAIÚSCULAS: "comenta PALAVRA"
+
+Estilo (no plano ou na pasta estilo/): cor_texto, cor_destaque, cor_caixa,
+caixa (false = texto solto com contorno), cor_contorno, raio, fonte
+(caminho de arquivo ou nome da família, ex: "Montserrat"), tamanho, maiusculas.
 """
 import platform
 import re
@@ -17,8 +21,15 @@ LARGURA_MAX_TEXTO = 900
 # Centro vertical de cada posição (fração da altura). O "baixo" fica acima
 # da área onde o Instagram desenha legenda, curtidas e botões.
 POSICAO_Y = {"alto": 0.22, "centro": 0.50, "baixo": 0.70}
-POSICAO_PADRAO = {"capa": "alto", "bloco": "baixo", "lista": "baixo", "chamada": "centro"}
-ESCALA = {"capa": 1.45, "bloco": 1.0, "lista": 1.0, "chamada": 1.2}
+POSICAO_PADRAO = {"capa": "alto", "bloco": "baixo", "lista": "baixo", "chamada": "centro", "legenda": "baixo"}
+ESCALA = {"capa": 1.45, "bloco": 1.0, "lista": 1.0, "chamada": 1.2, "legenda": 0.9}
+
+PASTAS_DE_FONTES = [
+    "~/Library/Fonts", "/Library/Fonts", "/System/Library/Fonts", "/System/Library/Fonts/Supplemental",
+    "C:/Windows/Fonts", "~/AppData/Local/Microsoft/Windows/Fonts",
+    "~/.local/share/fonts", "~/.fonts", "/usr/share/fonts", "/usr/local/share/fonts",
+]
+PESOS = ["extrabold", "black", "bold", "semibold", "medium", "regular", ""]
 
 FONTES_SISTEMA = {
     "Darwin": [
@@ -42,11 +53,42 @@ NUMERO = re.compile(r"\d")
 ORDINAL = re.compile(r"^\d+[ºª°]$")
 
 
+def _por_nome(nome):
+    """Procura uma fonte instalada pelo nome da família, preferindo pesos fortes."""
+    alvo = re.sub(r"[^a-z0-9]", "", nome.lower())
+    achadas = []
+    for pasta in PASTAS_DE_FONTES:
+        raiz = Path(pasta).expanduser()
+        if not raiz.is_dir():
+            continue
+        for arq in raiz.rglob("*"):
+            if arq.suffix.lower() in (".ttf", ".otf") and alvo in re.sub(r"[^a-z0-9]", "", arq.stem.lower()):
+                achadas.append(arq)
+    if not achadas:
+        return None
+
+    def nota(arq):
+        nome_arq = arq.stem.lower()
+        italico = "italic" in nome_arq
+        for i, peso in enumerate(PESOS):
+            if peso and peso in nome_arq:
+                return (italico, i)
+        return (italico, len(PESOS))
+    return str(sorted(achadas, key=nota)[0])
+
+
 def achar_fonte(preferida=None):
-    candidatas = [preferida] if preferida else []
-    candidatas += FONTES_SISTEMA.get(platform.system(), []) + sum(FONTES_SISTEMA.values(), [])
-    for c in candidatas:
-        if c and Path(c).expanduser().exists():
+    if preferida:
+        caminho = Path(preferida).expanduser()
+        if caminho.is_file():
+            return str(caminho)
+        if caminho.suffix.lower() not in (".ttf", ".otf"):
+            achada = _por_nome(preferida)
+            if achada:
+                return achada
+        print(f"Aviso: não achei a fonte '{preferida}', usando uma padrão do sistema.")
+    for c in FONTES_SISTEMA.get(platform.system(), []) + sum(FONTES_SISTEMA.values(), []):
+        if Path(c).expanduser().exists():
             return str(Path(c).expanduser())
     return None
 
@@ -124,17 +166,21 @@ def desenhar(texto_cfg, estilo, destino):
     cor_texto = _cor(estilo["cor_texto"])
     cor_dest = _cor(estilo["cor_destaque"])
 
-    if tipo == "capa":
-        contorno, cor_contorno = max(4, tamanho // 14), (0, 0, 0, 255)
+    raio = int(estilo.get("raio", 28))
+    cor_contorno = _cor(estilo.get("cor_contorno", "#000000"))
+    if tipo == "capa" or not estilo.get("caixa", True):
+        contorno = max(4, tamanho // 14)
+        if tipo == "chamada":
+            contorno += 2
     else:
         pad_x, pad_y = 38, 26
         caixa = [
             (LARGURA - bloco_w) / 2 - pad_x, topo - pad_y,
             (LARGURA + bloco_w) / 2 + pad_x, topo + bloco_h + pad_y,
         ]
-        d.rounded_rectangle(caixa, radius=28, fill=_cor(estilo["cor_caixa"]))
+        d.rounded_rectangle(caixa, radius=raio, fill=_cor(estilo["cor_caixa"]))
         if tipo == "chamada":
-            d.rounded_rectangle(caixa, radius=28, outline=cor_dest, width=5)
+            d.rounded_rectangle(caixa, radius=raio, outline=cor_dest, width=5)
         contorno, cor_contorno = 0, None
 
     y = topo

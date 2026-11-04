@@ -23,6 +23,22 @@ ESTILO_PADRAO = {
 }
 
 TIPOS = {"capa", "bloco", "lista", "chamada"}
+MODOS_TEXTO = {"resumo", "transcricao"}
+LEGENDA_PADRAO = {"palavras_por_bloco": 4, "posicao": "baixo"}
+PASTA_SKILL = Path(__file__).resolve().parent.parent
+FIM_DE_FRASE = (".", "?", "!", ",", ";", ":")
+
+
+def estilo_padrao():
+    """Estilo base: o do código, coberto pelo estilo-padrao.json da skill (se existir)."""
+    estilo = dict(ESTILO_PADRAO)
+    arq = PASTA_SKILL / "estilo-padrao.json"
+    if arq.exists():
+        try:
+            estilo.update({k: v for k, v in json.loads(arq.read_text(encoding="utf-8")).items() if not k.startswith("_")})
+        except json.JSONDecodeError:
+            print(f"Aviso: {arq} tem erro de formatação e foi ignorado.")
+    return estilo
 POSICOES = {"alto", "centro", "baixo"}
 TRANSICOES = {"corte", "fade", "flash", "zoom"}
 
@@ -35,12 +51,17 @@ def carregar(pasta):
     if "video" in plano and "videos" not in plano:
         plano["videos"] = [plano.pop("video")]
     plano.setdefault("velocidade", 1.0)
+    plano.setdefault("modo_texto", "resumo")
+    legenda = dict(LEGENDA_PADRAO)
+    legenda.update(plano.get("legenda") or {})
+    plano["legenda"] = legenda
+    plano.setdefault("correcoes", {})
     plano.setdefault("zoom", {"ativo": True, "fator": 1.12, "altura_rosto": 0.35})
     for chave in ("trechos", "textos", "imagens", "sons"):
         plano.setdefault(chave, [])
     for t in plano["trechos"]:
         t.setdefault("video", 1)
-    estilo = dict(ESTILO_PADRAO)
+    estilo = estilo_padrao()
     estilo.update(plano.get("estilo") or {})
     plano["estilo"] = estilo
     return plano
@@ -71,7 +92,10 @@ def _checar_ancora(item, rotulo, ids, ids_mantidos, problemas):
 def validar(plano, pasta=None):
     """Devolve a lista de problemas. Lista vazia significa plano pronto."""
     problemas = []
-    base = Path(pasta) if pasta else Path(".")
+    if plano.get("modo_texto", "resumo") not in MODOS_TEXTO:
+        problemas.append(f"modo_texto deve ser um de {sorted(MODOS_TEXTO)}.")
+    if plano.get("modo_texto") == "transcricao" and pasta and not (Path(pasta) / "transcricao.json").exists():
+        problemas.append("Modo transcrição precisa do transcricao.json na pasta de trabalho.")
 
     for n, v in enumerate(plano["videos"], 1):
         if not Path(v).expanduser().exists():
@@ -168,18 +192,66 @@ def _ancorar(itens, por_id, total, dur_padrao_fim=2.5):
     return saida
 
 
-def tempos(plano):
+def _corrigir(palavra, correcoes):
+    nucleo = palavra.strip(".,;:!?\"'")
+    for errado, certo in correcoes.items():
+        if nucleo.lower() == errado.lower():
+            return palavra.replace(nucleo, certo)
+    return palavra
+
+
+def legendas_da_fala(plano, pasta, finais):
+    """Modo transcrição: cria blocos de legenda sincronizados com cada palavra dita."""
+    dados = json.loads((Path(pasta) / "transcricao.json").read_text(encoding="utf-8"))
+    videos = dados.get("videos") or [dados]
+    vel = float(plano.get("velocidade") or 1.0)
+    n_max = max(1, int(plano["legenda"].get("palavras_por_bloco", 4)))
+    correcoes = plano.get("correcoes") or {}
+    blocos = []
+    for f in finais:
+        palavras = [
+            p for p in videos[f["video"] - 1]["palavras"]
+            if f["inicio_original"] <= p["i"] < f["fim_original"]
+        ]
+        atual = []
+        for p in palavras:
+            atual.append(p)
+            if len(atual) >= n_max or p["p"].endswith(FIM_DE_FRASE):
+                blocos.append((f, atual))
+                atual = []
+        if atual:
+            blocos.append((f, atual))
+
+    saida = []
+    for n, (f, grupo) in enumerate(blocos):
+        ini = f["inicio_final"] + (grupo[0]["i"] - f["inicio_original"]) / vel
+        if n + 1 < len(blocos) and blocos[n + 1][0] is f:
+            fim = f["inicio_final"] + (blocos[n + 1][1][0]["i"] - f["inicio_original"]) / vel
+        else:
+            fim = f["fim_final"]
+        texto = " ".join(_corrigir(p["p"], correcoes) for p in grupo).rstrip(".,;:")
+        saida.append({
+            "texto": texto, "tipo": "legenda", "posicao": plano["legenda"].get("posicao", "baixo"),
+            "inicio_final": round(max(0.0, ini), 3), "fim_final": round(max(fim, ini + 0.25), 3),
+        })
+    return saida
+
+
+def tempos(plano, pasta=None):
     """Converte a âncora de textos, imagens e sons em segundos do vídeo final."""
     finais, total = linha_do_tempo(plano)
     por_id = {f["id"]: f for f in finais}
+    textos = _ancorar(plano["textos"], por_id, total)
+    if plano.get("modo_texto") == "transcricao" and pasta:
+        textos = legendas_da_fala(plano, pasta, finais) + textos
     return {
-        "textos": _ancorar(plano["textos"], por_id, total),
+        "textos": textos,
         "imagens": _ancorar(plano["imagens"], por_id, total),
         "sons": _ancorar(plano["sons"], por_id, total),
         "total": total,
     }
 
 
-def tempos_dos_textos(plano):
-    t = tempos(plano)
+def tempos_dos_textos(plano, pasta=None):
+    t = tempos(plano, pasta)
     return t["textos"], t["total"]

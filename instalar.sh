@@ -23,11 +23,12 @@ if [ -z "$PY" ]; then
 fi
 
 mkdir -p "$DESTINO"
-# Atualiza os arquivos e mantém a .venv que já existir.
-rsync -a --delete --exclude ".venv" "$ORIGEM/" "$DESTINO/" 2>/dev/null || {
-  find "$DESTINO" -mindepth 1 -maxdepth 1 ! -name ".venv" -exec rm -rf {} +
-  cp -R "$ORIGEM/." "$DESTINO/"
-}
+# Atualiza os arquivos e mantém a .venv e o seu estilo-padrao.json.
+GUARDADO=""
+if [ -f "$DESTINO/estilo-padrao.json" ]; then GUARDADO="$(mktemp)"; cp "$DESTINO/estilo-padrao.json" "$GUARDADO"; fi
+find "$DESTINO" -mindepth 1 -maxdepth 1 ! -name ".venv" -exec rm -rf {} +
+cp -R "$ORIGEM/." "$DESTINO/"
+if [ -n "$GUARDADO" ]; then cp "$GUARDADO" "$DESTINO/estilo-padrao.json"; rm -f "$GUARDADO"; echo "Mantive o seu estilo-padrao.json."; fi
 
 if [ ! -x "$DESTINO/.venv/bin/python" ]; then
   "$PY" -m venv "$DESTINO/.venv"

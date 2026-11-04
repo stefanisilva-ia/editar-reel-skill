@@ -70,7 +70,7 @@ def renderizar(pasta, plano):
     videos = [Path(v).expanduser() for v in plano["videos"]]
     infos = [sondar(v) for v in videos]
     finais, total = linha_do_tempo(plano)
-    t = tempos(plano)
+    t = tempos(plano, pasta)
     vel = float(plano.get("velocidade") or 1.0)
     zoom = plano.get("zoom") or {}
 

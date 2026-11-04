@@ -24,9 +24,13 @@ if (-not $Py) {
 }
 
 New-Item -ItemType Directory -Force -Path $Destino | Out-Null
-# Atualiza os arquivos e mantém a .venv que já existir.
+# Atualiza os arquivos e mantém a .venv e o seu estilo-padrao.json.
+$EstiloArq = Join-Path $Destino 'estilo-padrao.json'
+$Guardado = $null
+if (Test-Path $EstiloArq) { $Guardado = Get-Content -Raw $EstiloArq }
 Get-ChildItem -Force $Destino | Where-Object { $_.Name -ne '.venv' } | Remove-Item -Recurse -Force
 Copy-Item -Recurse -Force (Join-Path $Origem '*') $Destino
+if ($Guardado) { Set-Content -NoNewline -Encoding UTF8 -Path $EstiloArq -Value $Guardado; Write-Host 'Mantive o seu estilo-padrao.json.' }
 
 $VenvPy = Join-Path $Destino '.venv\Scripts\python.exe'
 if (-not (Test-Path $VenvPy)) { & $Py -m venv (Join-Path $Destino '.venv') }

@@ -10,23 +10,28 @@ Você grava falando para a câmera, chama `/editar-reel` e recebe o vídeo pront
 2. **Propõe os cortes.** Pausas, tomadas repetidas e frases que começaram erradas. Você aprova antes de qualquer corte.
 3. **Junta vários vídeos.** Rosto e gravação de tela numa edição só, na ordem que você indicar.
 4. **Dá ritmo.** Alterna plano aberto e plano fechado a cada frase, com transições onde você pedir.
-5. **Coloca texto, prints e sons.** Texto na tela em blocos de até 6 palavras, prints flutuando e efeitos sonoros no momento exato da fala.
-6. **Exporta em 9:16** e escreve a legenda do post. 1080x1920, pronto para Instagram, TikTok e Shorts.
+5. **Coloca texto, prints e sons.** Texto na tela em resumo ou como legenda da fala, prints flutuando e efeitos sonoros no momento exato.
+6. **Segue referências de estilo.** Cores, fontes e prints de uma pasta `estilo/` valem para aquele vídeo.
+7. **Exporta em 9:16** e escreve a legenda do post. 1080x1920, pronto para Instagram, TikTok e Shorts.
 
 Depois é só pedir ajuste em texto: "corta a terceira frase", "abre pela frase do resultado", "troca a cor do destaque".
 
-## Texto na tela
+## Texto na tela: resumo ou legenda
 
-A skill segue regras fixas, porque texto na tela não é legenda:
+Você escolhe, a cada vídeo:
+
+- **Resumo** (padrão): a fala vira blocos curtos, que quem assiste sem som entende em um segundo.
+- **Transcrição**: legenda sincronizada com a fala, palavra por palavra, só dos trechos que ficaram.
+
+No modo resumo, a skill segue regras fixas:
 
 - Máximo de 6 palavras por bloco
-- Resume a fala, nunca transcreve
 - Números, resultados e palavra-chave em destaque
 - Listas numeradas: 1º, 2º, 3º
 - Afirmação curta no lugar de pergunta
 - Resultado concreto no lugar de benefício vago
 
-| A fala | Na tela |
+| A fala | Resumo na tela |
 |---|---|
 | "ficou pronto em uns dez minutos" | **pronto em 10 minutos** |
 | "a segunda é o atendimento vinte e quatro horas" | **2º ATENDIMENTO 24H** |
@@ -72,8 +77,6 @@ cd editar-reel-skill
 powershell -ExecutionPolicy Bypass -File instalar.ps1
 ```
 
-Para atualizar, rode o instalador de novo. Ele troca os arquivos e mantém o que já foi baixado.
-
 ## Como usar
 
 Na primeira vez, o modelo de transcrição é baixado. Leva alguns minutos e acontece uma vez só.
@@ -86,10 +89,11 @@ Quanto mais claro o pedido, menos perguntas o Claude faz. Um bom pedido diz **on
 reel-painel/
 ├── videos/   01-abertura.mov   02-tela.mov
 ├── prints/   painel.png   whatsapp.png
-└── sons/     pop.wav   whoosh.mp3
+├── sons/     pop.wav   whoosh.mp3
+└── estilo/   referencia.png   MinhaFonte-Bold.ttf   cores.md   (opcional)
 ```
 
-> Numere os vídeos (01, 02...) e o Claude segue essa ordem sem perguntar. Prints e sons com nomes claros ficam fáceis de citar no pedido.
+> Numere os vídeos (01, 02...) e o Claude segue essa ordem sem perguntar. Prints e sons com nomes claros ficam fáceis de citar no pedido. A pasta `estilo/` só é necessária quando o vídeo foge do seu visual de sempre.
 
 ### 1. Edição simples
 
@@ -147,6 +151,35 @@ e o whoosh.mp3 na entrada do print. Volume baixo nos dois.
 
 > **O que faz:** tudo de uma vez. O Claude ainda mostra os cortes e as opções de capa para você aprovar antes de renderizar. **Adapte:** numere os pedidos, um por linha. Fica mais fácil para você revisar e para o Claude seguir.
 
+### 6. Com legenda da fala
+
+```
+/editar-reel o vídeo está em ~/Downloads/tutorial.MOV.
+Quero legenda transcrevendo a fala, 3 palavras por vez.
+Corrige "cloud code" para "Claude Code". Palavra-chave GUIA.
+```
+
+> **O que faz:** gera a legenda sincronizada com o que você fala, já sem os trechos cortados, e mantém a capa e a chamada final. **Adapte:** menos palavras por vez deixa mais dinâmico. Para voltar ao resumo, peça "resume a fala".
+
+### 7. Com referência de estilo
+
+```
+/editar-reel pasta do projeto: ~/reel-campanha
+Usa o estilo da pasta estilo: as cores do cores.md,
+a fonte que está lá e o jeito de texto da referencia.png.
+```
+
+Exemplo de `cores.md`:
+
+```
+destaque: #FF5A1F
+fundo da caixa: #1B1B3A
+texto: #FFFFFF
+fonte: Montserrat
+```
+
+> **O que faz:** lê as cores, a fonte e as imagens de referência e aplica só neste vídeo. Antes de renderizar, o Claude diz qual estilo vai usar. **Adapte:** sem `cores.md`, as cores saem das imagens. Para mudar o seu visual de sempre, peça "salva esse estilo como padrão".
+
 ### Ajustes depois da entrega
 
 Peça em texto, como faria com um editor:
@@ -160,6 +193,8 @@ Peça em texto, como faria com um editor:
 | `sem zoom nos cortes` | desliga a alternância de plano |
 | `muda o destaque para #dfac16` | troca a cor dos números e palavras-chave |
 | `refaz a legenda do post, mais curta` | reescreve o `legenda.txt` |
+| `troca o resumo por legenda da fala` | muda o modo do texto |
+| `texto sem caixa, em maiúsculas` | muda o estilo só deste vídeo |
 
 ### O que cada transição faz
 
@@ -177,30 +212,48 @@ Peça em texto, como faria com um editor:
 - Diga números e resultados em voz alta. Eles viram destaque na tela.
 - Grave na vertical, com o rosto no terço de cima do quadro.
 
-## Personalização
+## Estilo
 
-Cores, fonte e tamanho ficam no `plano.json` de cada vídeo, no campo `estilo`:
+O visual de sempre fica em `editar-reel/estilo-padrao.json` (já vem com verde, dourado e Montserrat). Troque pelos seus valores; as atualizações da skill mantêm esse arquivo.
 
 ```json
-"estilo": {
+{
   "cor_texto": "#FFFFFF",
-  "cor_destaque": "#FFD60A",
-  "cor_caixa": "#000000B8",
-  "fonte": "~/Fontes/MinhaFonte-Bold.ttf",
-  "tamanho": 68
+  "cor_destaque": "#DFAC16",
+  "cor_caixa": "#03332CD9",
+  "caixa": true,
+  "fonte": "Montserrat",
+  "tamanho": 68,
+  "maiusculas": false
 }
 ```
+
+Para um vídeo com outro visual, use a pasta `estilo/` (exemplo 7). O que você pedir em texto vale mais que a pasta, e a pasta vale mais que o padrão.
+
+A fonte pode ser o nome de uma fonte instalada no computador ou um arquivo `.ttf`/`.otf`. Montserrat é gratuita no Google Fonts.
+
+## Atualizar
+
+Rode o instalador de novo, ou peça no Claude Code:
+
+```
+Atualiza a skill editar-reel a partir de https://github.com/stefanisilva-ia/editar-reel-skill
+```
+
+O instalador troca os arquivos da skill e mantém as bibliotecas já baixadas e o seu `estilo-padrao.json`.
 
 ## Estrutura
 
 | Arquivo | Função |
 |---|---|
 | `editar-reel/SKILL.md` | Passo a passo e regras que o Claude segue |
-| `editar-reel/motor/cli.py` | Comandos: checar, transcrever, segmentar, validar, renderizar, quadros |
+| `editar-reel/motor/cli.py` | Comandos: checar, transcrever, segmentar, estilo, validar, renderizar, quadros |
 | `editar-reel/motor/transcricao.py` | Transcrição local com o tempo de cada palavra |
 | `editar-reel/motor/segmentos.py` | Divide a fala em trechos e cria o plano |
 | `editar-reel/motor/plano.py` | Valida o plano e calcula a linha do tempo final |
-| `editar-reel/motor/cartelas.py` | Desenha o texto na tela |
+| `editar-reel/motor/cartelas.py` | Desenha o texto na tela e os prints |
+| `editar-reel/motor/estilo.py` | Lê a pasta de referências de estilo |
+| `editar-reel/estilo-padrao.json` | O seu visual de sempre |
 | `editar-reel/motor/render.py` | Corta, enquadra, dá ritmo e exporta |
 | `instalar.sh` e `instalar.ps1` | Instaladores |
 

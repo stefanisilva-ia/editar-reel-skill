@@ -11,7 +11,7 @@ guarda de qual vídeo veio (campo "video", começando em 1).
 import json
 from pathlib import Path
 
-from plano import ESTILO_PADRAO, salvar
+from plano import salvar
 
 PAUSA = 0.45
 FOLGA_INICIO = 0.08
@@ -61,7 +61,8 @@ def segmentar(pasta, pausa=PAUSA):
         "saida": "reel-final.mp4",
         "velocidade": 1.0,
         "zoom": {"ativo": True, "fator": 1.12, "altura_rosto": 0.35},
-        "estilo": dict(ESTILO_PADRAO),
+        "modo_texto": "resumo",
+        "estilo": {},
         "trechos": trechos,
         "textos": [],
         "imagens": [],

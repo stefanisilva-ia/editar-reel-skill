@@ -3,6 +3,7 @@
   python motor/cli.py checar
   python motor/cli.py transcrever VIDEO [VIDEO2 ...] [--pasta NOME] [--modelo small]
   python motor/cli.py segmentar PASTA [--pausa 0.45]
+  python motor/cli.py estilo PASTA_ESTILO [--aplicar PASTA]
   python motor/cli.py validar PASTA
   python motor/cli.py cartelas PASTA
   python motor/cli.py renderizar PASTA
@@ -68,6 +69,32 @@ def cmd_segmentar(a):
         print(f"[{t['id']:>2}] {origem}{t['inicio']:6.2f} a {t['fim']:6.2f}  {t['fala']}")
 
 
+def cmd_estilo(a):
+    import json
+    from estilo import ler, sugerir
+    achado = ler(a.pasta_estilo)
+    print(f"Imagens: {len(achado['imagens'])}  Fontes: {len(achado['fontes'])}  Textos: {len(achado['textos'])}\n")
+    for im in achado["imagens"]:
+        cores = ", ".join(f"{c} ({int(pc * 100)}%)" for c, pc in im["cores"])
+        print(f"  {Path(im['arquivo']).name}: {cores}")
+    for f in achado["fontes"]:
+        print(f"  fonte: {Path(f).name}")
+    for t in achado["textos"]:
+        print(f"  {Path(t['arquivo']).name}: {', '.join(t['cores']) or 'sem cores'}")
+    if achado["rotuladas"]:
+        print(f"  cores com função definida: {achado['rotuladas']}")
+    if achado["fonte_nome"]:
+        print(f"  fonte citada: {achado['fonte_nome']}")
+    sugestao = sugerir(achado)
+    print("\nEstilo sugerido:")
+    print(json.dumps(sugestao, ensure_ascii=False, indent=2))
+    if a.aplicar:
+        plano = json.loads((Path(a.aplicar) / "plano.json").read_text(encoding="utf-8"))
+        plano.setdefault("estilo", {}).update(sugestao)
+        P.salvar(a.aplicar, plano)
+        print(f"\nAplicado em {Path(a.aplicar) / 'plano.json'}. Ajuste à mão o que as imagens mostrarem (caixa, maiúsculas).")
+
+
 def cmd_validar(a):
     plano = P.carregar(a.pasta)
     problemas = P.validar(plano, a.pasta)
@@ -76,7 +103,7 @@ def cmd_validar(a):
         for p in problemas:
             print(f"  - {p}")
         sys.exit(1)
-    t = P.tempos(plano)
+    t = P.tempos(plano, a.pasta)
     print(f"Plano ok. Duração final: {t['total']:.1f} s.\n")
     linhas = []
     for tx in t["textos"]:
@@ -119,7 +146,7 @@ def cmd_quadros(a):
     if a.tempos:
         tempos = [float(t) for t in a.tempos.split(",")]
     else:
-        t = P.tempos(plano)
+        t = P.tempos(plano, a.pasta)
         itens = t["textos"] + t["imagens"]
         tempos = sorted({round((i["inicio_final"] + i["fim_final"]) / 2, 2) for i in itens}) or [t["total"] / 2]
     destino = Path(a.pasta) / "quadros"
@@ -147,6 +174,10 @@ def main():
     s.add_argument("pasta")
     s.add_argument("--pausa", type=float, default=0.45)
     s.set_defaults(f=cmd_segmentar)
+    s = sub.add_parser("estilo")
+    s.add_argument("pasta_estilo")
+    s.add_argument("--aplicar", default=None)
+    s.set_defaults(f=cmd_estilo)
     for nome, f in (("validar", cmd_validar), ("cartelas", cmd_cartelas), ("renderizar", cmd_renderizar)):
         s = sub.add_parser(nome)
         s.add_argument("pasta")
