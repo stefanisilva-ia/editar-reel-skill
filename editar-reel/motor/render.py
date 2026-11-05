@@ -10,7 +10,9 @@ import json
 import subprocess
 from pathlib import Path
 
-from cartelas import ALTURA, LARGURA, desenhar, desenhar_cartao, desenhar_imagem
+from PIL import Image
+
+from cartelas import ALTURA, LARGURA, desenhar, desenhar_cartao, desenhar_imagem, quadros_do_contador
 from plano import linha_do_tempo, tempos
 
 FPS = 30
@@ -116,6 +118,14 @@ def renderizar(pasta, plano):
     filtros.append(f"[vc]setpts=PTS/{vel},fps={FPS}[vx]")
     filtros.append(f"[ac]atempo={vel}[ax]")
 
+    # Lista com "som_itens": um click em cada item que acende.
+    for c in t["cartoes"]:
+        if c.get("tipo") == "lista" and c.get("som_itens"):
+            from sons import garantir
+            click = garantir()["click"][0]
+            for ti in c.get("itens_tempo", []):
+                t["sons"].append({"arquivo": str(click), "inicio_final": ti, "volume": 0.5})
+
     # Efeitos sonoros: entram por cima da fala, sem mudar de velocidade.
     proxima = len(videos)
     trilha = "ax"
@@ -134,31 +144,45 @@ def renderizar(pasta, plano):
         filtros.append(f"[ax]{''.join(rotulos)}amix=inputs={len(rotulos) + 1}:duration=first:normalize=0[am]")
         trilha = "am"
 
-    # Prints primeiro (ficam atrás), textos depois (ficam na frente).
+    # Camadas visuais, de trás para a frente: prints, cartões, legenda, textos.
+    animar = plano.get("animacao", True)
     camadas = []
     for n, im in enumerate(t["imagens"], 1):
         png = pasta_cartelas / f"print-{n:02d}.png"
         desenhar_imagem(im, plano["estilo"], png)
-        camadas.append((png, im))
+        camadas.append(_camada_png(png, im, im.get("entrada", "sobe")))
     for n, c in enumerate(t["cartoes"], 1):
-        png = pasta_cartelas / f"cartao-{n:02d}.png"
-        desenhar_cartao(c, plano["estilo"], png)
-        camadas.append((png, c))
+        camadas.append(_camada_cartao(c, n, plano["estilo"], pasta_cartelas))
+    if t["legendas"]:
+        camadas.append(_trilha_legenda(t["legendas"], plano, pasta_cartelas, t["total"]))
     for n, tx in enumerate(t["textos"], 1):
         png = pasta_cartelas / f"texto-{n:02d}.png"
         desenhar(tx, plano["estilo"], png)
-        camadas.append((png, tx))
+        padrao = "pop" if tx.get("tipo") in ("capa", "chamada") else "sobe"
+        camadas.append(_camada_png(png, tx, tx.get("entrada", padrao)))
 
     atual = "vx"
-    for n, (png, item) in enumerate(camadas, 1):
-        dur = max(0.4, item["fim_final"] - item["inicio_final"])
-        entradas += ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", str(png)]
-        filtros.append(
-            f"[{proxima}:v]format=rgba,fade=t=in:st=0:d={FADE}:alpha=1,"
-            f"fade=t=out:st={max(0, dur - FADE):.3f}:d={FADE}:alpha=1,"
-            f"setpts=PTS+{item['inicio_final']:.3f}/TB[c{n}]"
-        )
-        filtros.append(f"[{atual}][c{n}]overlay=0:0:eof_action=pass[o{n}]")
+    for n, cam in enumerate(camadas, 1):
+        anim = cam["anim"] if animar else ("nenhuma" if cam["anim"] == "nenhuma" else "fade")
+        entradas += cam["args"]
+        cadeia = f"[{proxima}:v]format=rgba" + cam.get("pre", "")
+        x, y = "0", "0"
+        if anim in ("fade", "sobe", "pop"):
+            dur = cam["dur"]
+            cadeia += (
+                f",fade=t=in:st=0:d={0.12 if anim == 'pop' else FADE}:alpha=1"
+                f",fade=t=out:st={max(0, dur - FADE):.3f}:d={FADE}:alpha=1"
+            )
+        if anim == "pop":
+            s_expr = "if(lt(t,0.32),0.86+0.14*(1+2.70158*pow(t/0.32-1,3)+1.70158*pow(t/0.32-1,2)),1)"
+            cadeia += f",scale=w='trunc({LARGURA}*{s_expr}/2)*2':h='trunc({ALTURA}*{s_expr}/2)*2':eval=frame"
+            x, y = "'(main_w-overlay_w)/2'", "'(main_h-overlay_h)/2'"
+        elif anim == "sobe":
+            ini = cam["ini"]
+            y = f"'if(lt(t-{ini:.3f},0.3),44*pow(1-(t-{ini:.3f})/0.3,2),0)'"
+        cadeia += f",setpts=PTS+{cam['ini']:.3f}/TB[c{n}]"
+        filtros.append(cadeia)
+        filtros.append(f"[{atual}][c{n}]overlay=x={x}:y={y}:eof_action=pass[o{n}]")
         atual = f"o{n}"
         proxima += 1
 
@@ -174,4 +198,107 @@ def renderizar(pasta, plano):
         "-movflags", "+faststart", "-t", f"{total:.3f}", str(saida),
     ]
     subprocess.run(cmd, check=True)
+    if plano.get("volume_padrao", True):
+        _padronizar_volume(saida)
     return saida, total, t
+
+
+def _camada_png(png, item, anim):
+    dur = max(0.4, item["fim_final"] - item["inicio_final"])
+    return {
+        "args": ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", str(png)],
+        "ini": item["inicio_final"], "dur": dur, "anim": anim,
+    }
+
+
+def _lista_concat(estados, destino):
+    """estados: [(png, duração)]. Escreve a lista do concat do ffmpeg."""
+    linhas = []
+    for png, dur in estados:
+        linhas.append(f"file '{Path(png).resolve()}'")
+        linhas.append(f"duration {max(dur, 1 / FPS):.3f}")
+    linhas.append(f"file '{Path(estados[-1][0]).resolve()}'")
+    Path(destino).write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    return ["-f", "concat", "-safe", "0", "-i", str(destino)]
+
+
+def _camada_cartao(c, n, estilo, pasta):
+    dur = max(0.4, c["fim_final"] - c["inicio_final"])
+    anim = c.get("entrada", "pop" if c["tipo"] == "numero" else "sobe")
+    base = {"ini": c["inicio_final"], "dur": dur, "anim": anim}
+
+    if c["tipo"] == "numero" and c.get("contar", True):
+        valores = quadros_do_contador(c["valor"])
+        if valores:
+            for k, v in enumerate(valores):
+                desenhar_cartao(c, estilo, pasta / f"cartao-{n:02d}-{k:03d}.png", valor=v)
+            resto = max(0.0, dur - len(valores) / FPS)
+            return {**base,
+                    "args": ["-framerate", str(FPS), "-i", str(pasta / f"cartao-{n:02d}-%03d.png")],
+                    "pre": f",tpad=stop_mode=clone:stop_duration={resto:.3f}"}
+
+    if c["tipo"] == "lista" and c.get("itens_tempo"):
+        marcos = [c["inicio_final"]] + c["itens_tempo"] + [c["fim_final"]]
+        estados = []
+        for k in range(len(c["itens"]) + 1):
+            png = pasta / f"cartao-{n:02d}-item{k}.png"
+            desenhar_cartao(c, estilo, png, visiveis=k)
+            estados.append((png, marcos[k + 1] - marcos[k]))
+        args = _lista_concat(estados, pasta / f"cartao-{n:02d}.txt")
+        return {**base, "args": args, "pre": f",fps={FPS},trim=duration={dur:.3f}"}
+
+    png = pasta / f"cartao-{n:02d}.png"
+    desenhar_cartao(c, estilo, png)
+    return _camada_png(png, c, anim)
+
+
+def _trilha_legenda(legendas, plano, pasta, total):
+    """Toda a legenda numa trilha só, com a palavra ativa marcada."""
+    vazio = pasta / "vazio.png"
+    Image.new("RGBA", (LARGURA, ALTURA), (0, 0, 0, 0)).save(vazio)
+    ativa = plano["legenda"].get("palavra_ativa", True)
+    estados, cursor = [], 0.0
+    for b, leg in enumerate(legendas):
+        if leg["inicio_final"] > cursor + 0.001:
+            estados.append((vazio, leg["inicio_final"] - cursor))
+        tempos_p = leg["palavras_ini"] if ativa else [leg["inicio_final"]]
+        for j, ini in enumerate(tempos_p):
+            fim = tempos_p[j + 1] if j + 1 < len(tempos_p) else leg["fim_final"]
+            cfg = dict(leg)
+            if ativa:
+                cfg["ativa"] = leg["indices"][j]
+            png = pasta / f"legenda-{b:03d}-{j:02d}.png"
+            desenhar(cfg, plano["estilo"], png)
+            estados.append((png, max(0.0, fim - max(ini, cursor))))
+        cursor = leg["fim_final"]
+    if total > cursor:
+        estados.append((vazio, total - cursor))
+    args = _lista_concat(estados, pasta / "legenda.txt")
+    return {"args": args, "ini": 0.0, "dur": total, "anim": "nenhuma", "pre": f",fps={FPS}"}
+
+
+def _padronizar_volume(arquivo, alvo=-14.0, pico=-1.0):
+    """Volume final no padrão das redes: -14 LUFS, pico em -1 dBTP (duas passadas)."""
+    medida = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-i", str(arquivo), "-af",
+         f"loudnorm=I={alvo}:TP={pico}:LRA=11:print_format=json", "-f", "null", "-"],
+        capture_output=True, text=True,
+    ).stderr
+    try:
+        bloco = medida[medida.rindex("{"):medida.rindex("}") + 1]
+        m = json.loads(bloco)
+    except ValueError:
+        print("Aviso: não consegui medir o volume; o arquivo ficou como estava.")
+        return
+    filtro = (
+        f"loudnorm=I={alvo}:TP={pico}:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
+        f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true"
+    )
+    temp = Path(arquivo).with_suffix(".volume.mp4")
+    subprocess.run(
+        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(arquivo), "-c:v", "copy",
+         "-af", filtro + ",aresample=48000", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(temp)],
+        check=True,
+    )
+    temp.replace(arquivo)
+    print(f"Volume padronizado: {alvo} LUFS (antes {float(m['input_i']):.1f}).")

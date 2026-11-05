@@ -68,6 +68,12 @@ def cmd_segmentar(a):
     for t in trechos:
         origem = f"v{t['video']} " if varios else ""
         print(f"[{t['id']:>2}] {origem}{t['inicio']:6.2f} a {t['fim']:6.2f}  {t['fala']}")
+    from segmentos import sugerir_cortes
+    sugestoes = sugerir_cortes(trechos)
+    if sugestoes:
+        print("\nSugestões de corte (confirme com a pessoa antes de aplicar):")
+        for s in sugestoes:
+            print(f"  - {s}")
 
 
 def cmd_estilo(a):
@@ -114,6 +120,9 @@ def cmd_validar(a):
     t = P.tempos(plano, a.pasta)
     print(f"Plano ok. Duração final: {t['total']:.1f} s.\n")
     linhas = []
+    if t["legendas"]:
+        linhas.append((t["legendas"][0]["inicio_final"], t["legendas"][-1]["fim_final"],
+                       f"legenda da fala: {len(t['legendas'])} blocos"))
     for tx in t["textos"]:
         linhas.append((tx["inicio_final"], tx["fim_final"], f"texto [{tx.get('tipo', 'bloco')}] {tx['texto']}"))
     for c in t["cartoes"]:
@@ -125,6 +134,8 @@ def cmd_validar(a):
         linhas.append((s["inicio_final"], s["inicio_final"], f"som {Path(s['arquivo']).name}"))
     for ini, fim, txt in sorted(linhas):
         print(f"{ini:6.2f} a {fim:6.2f}  {txt}")
+    for aviso in t["avisos"]:
+        print(f"Aviso: {aviso}")
 
 
 def cmd_cartelas(a):
@@ -161,7 +172,7 @@ def cmd_quadros(a):
         tempos = [float(t) for t in a.tempos.split(",")]
     else:
         t = P.tempos(plano, a.pasta)
-        itens = t["textos"] + t["imagens"] + t["cartoes"]
+        itens = t["textos"] + t["imagens"] + t["cartoes"] + t["legendas"][::3]
         tempos = sorted({round((i["inicio_final"] + i["fim_final"]) / 2, 2) for i in itens}) or [t["total"] / 2]
     destino = Path(a.pasta) / "quadros"
     destino.mkdir(exist_ok=True)

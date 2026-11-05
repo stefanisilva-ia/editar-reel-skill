@@ -186,7 +186,42 @@ def linha_do_tempo(plano):
     return finais, cursor
 
 
-def _ancorar(itens, por_id, total, dur_padrao_fim=2.5):
+def _normal(palavra):
+    return palavra.strip(".,;:!?\"'*()").lower()
+
+
+def palavras_finais(plano, pasta, finais):
+    """Cada palavra dos trechos mantidos com o seu tempo no vídeo final."""
+    if not pasta or not (Path(pasta) / "transcricao.json").exists():
+        return []
+    dados = json.loads((Path(pasta) / "transcricao.json").read_text(encoding="utf-8"))
+    videos = dados.get("videos") or [dados]
+    vel = float(plano.get("velocidade") or 1.0)
+    saida = []
+    for f in finais:
+        for p in videos[f["video"] - 1]["palavras"]:
+            if f["inicio_original"] <= p["i"] < f["fim_original"]:
+                ini = f["inicio_final"] + (p["i"] - f["inicio_original"]) / vel
+                fim = f["inicio_final"] + (min(p["f"], f["fim_original"]) - f["inicio_original"]) / vel
+                saida.append({"p": p["p"], "ini": round(ini, 3), "fim": round(fim, 3), "trecho": f["id"]})
+    return saida
+
+
+def achar_palavra(palavra, falas, desde=0.0, ate=None, trecho=None):
+    """Tempo da primeira vez que a palavra (ou expressão) é dita a partir de 'desde'."""
+    alvo = [_normal(w) for w in str(palavra).split()]
+    for i in range(len(falas) - len(alvo) + 1):
+        f = falas[i]
+        if f["ini"] < desde - 0.01 or (ate is not None and f["ini"] > ate):
+            continue
+        if trecho is not None and f["trecho"] != trecho:
+            continue
+        if [_normal(x["p"]) for x in falas[i:i + len(alvo)]] == alvo:
+            return f["ini"]
+    return None
+
+
+def _ancorar(itens, por_id, total, falas=(), dur_padrao_fim=2.5, avisos=None):
     saida = []
     for it in itens:
         if it.get("tipo") == "chamada":
@@ -198,11 +233,41 @@ def _ancorar(itens, por_id, total, dur_padrao_fim=2.5):
                 continue
             b = por_id.get(it.get("ate_trecho"), a)
             ini = a["inicio_final"] + float(it.get("atraso", 0.0))
+            if it.get("palavra"):
+                achado = achar_palavra(it["palavra"], falas, a["inicio_final"], b["fim_final"])
+                if achado is not None:
+                    ini = achado + float(it.get("atraso", 0.0))
+                elif avisos is not None:
+                    avisos.append(f"Palavra '{it['palavra']}' não encontrada no trecho {it.get('trecho')}; usei o início do trecho.")
             fim = max(b["fim_final"], ini + 0.4)
             if it.get("duracao"):
                 fim = min(total, ini + float(it["duracao"]))
-        saida.append({**it, "inicio_final": round(ini, 3), "fim_final": round(fim, 3)})
+        novo = {**it, "inicio_final": round(ini, 3), "fim_final": round(fim, 3)}
+        if it.get("tipo") == "lista" and it.get("itens"):
+            novo["itens_tempo"] = _tempos_dos_itens(it, novo, falas, avisos)
+        saida.append(novo)
     return saida
+
+
+def _tempos_dos_itens(cfg, ancorado, falas, avisos):
+    """Quando cada item de uma lista acende: na palavra dita ou em passos regulares."""
+    ini, fim = ancorado["inicio_final"], ancorado["fim_final"]
+    n = len(cfg["itens"])
+    passo = max(0.4, min(1.2, (fim - ini) * 0.7 / max(n, 1)))
+    tempos_itens = []
+    palavras = cfg.get("palavras") or []
+    for k in range(n):
+        t = ini + 0.35 + k * passo
+        if k < len(palavras) and palavras[k]:
+            achado = achar_palavra(palavras[k], falas, (tempos_itens[-1] if tempos_itens else ini) - 0.05, fim)
+            if achado is not None:
+                t = achado
+            elif avisos is not None:
+                avisos.append(f"Palavra '{palavras[k]}' da lista não encontrada; usei um tempo regular.")
+        if tempos_itens:
+            t = max(t, tempos_itens[-1] + 0.15)
+        tempos_itens.append(round(min(t, fim - 0.2), 3))
+    return tempos_itens
 
 
 def _corrigir(palavra, correcoes):
@@ -213,36 +278,31 @@ def _corrigir(palavra, correcoes):
     return palavra
 
 
-def legendas_da_fala(plano, pasta, finais):
-    """Modo transcrição: cria blocos de legenda sincronizados com cada palavra dita."""
-    dados = json.loads((Path(pasta) / "transcricao.json").read_text(encoding="utf-8"))
-    videos = dados.get("videos") or [dados]
-    vel = float(plano.get("velocidade") or 1.0)
+def legendas_da_fala(plano, falas):
+    """Modo transcrição: blocos de legenda com o tempo de cada palavra (para a palavra ativa)."""
     n_max = max(1, int(plano["legenda"].get("palavras_por_bloco", 4)))
     correcoes = plano.get("correcoes") or {}
     destaques = {d.lower() for d in plano["legenda"].get("destaques") or []}
-    blocos = []
-    for f in finais:
-        palavras = [
-            p for p in videos[f["video"] - 1]["palavras"]
-            if f["inicio_original"] <= p["i"] < f["fim_original"]
-        ]
-        atual = []
-        for p in palavras:
-            atual.append(p)
-            if len(atual) >= n_max or p["p"].endswith(FIM_DE_FRASE):
-                blocos.append((f, atual))
-                atual = []
-        if atual:
-            blocos.append((f, atual))
+
+    grupos, atual = [], []
+    for k, p in enumerate(falas):
+        if atual and p["trecho"] != atual[-1]["trecho"]:
+            grupos.append(atual)
+            atual = []
+        atual.append(p)
+        if len(atual) >= n_max or p["p"].endswith(FIM_DE_FRASE):
+            grupos.append(atual)
+            atual = []
+    if atual:
+        grupos.append(atual)
 
     saida = []
-    for n, (f, grupo) in enumerate(blocos):
-        ini = f["inicio_final"] + (grupo[0]["i"] - f["inicio_original"]) / vel
-        if n + 1 < len(blocos) and blocos[n + 1][0] is f:
-            fim = f["inicio_final"] + (blocos[n + 1][1][0]["i"] - f["inicio_original"]) / vel
+    for n, grupo in enumerate(grupos):
+        ini = grupo[0]["ini"]
+        if n + 1 < len(grupos) and grupos[n + 1][0]["trecho"] == grupo[0]["trecho"]:
+            fim = grupos[n + 1][0]["ini"]
         else:
-            fim = f["fim_final"]
+            fim = max(grupo[-1]["fim"] + 0.15, ini + 0.25)
         palavras = []
         for p in grupo:
             w = _corrigir(p["p"], correcoes)
@@ -250,30 +310,43 @@ def legendas_da_fala(plano, pasta, finais):
             if nucleo.strip("\"'").lower() in destaques:
                 w = f"*{nucleo}*{w[len(nucleo):]}"
             palavras.append(w)
-        texto = " ".join(palavras).rstrip(".,;:")
+        palavras[-1] = palavras[-1].rstrip(".,;:")
+        inicios, cont = [], 0
+        for w in palavras:
+            inicios.append(cont)
+            cont += len(w.split())
         saida.append({
-            "texto": texto, "tipo": "legenda", "posicao": plano["legenda"].get("posicao", "baixo"),
-            "inicio_final": round(max(0.0, ini), 3), "fim_final": round(max(fim, ini + 0.25), 3),
+            "indices": inicios,
+            "texto": " ".join(palavras), "tipo": "legenda", "posicao": plano["legenda"].get("posicao", "baixo"),
+            "inicio_final": round(ini, 3), "fim_final": round(fim, 3),
+            "palavras_ini": [p["ini"] for p in grupo],
         })
+    for a, b in zip(saida, saida[1:]):
+        a["fim_final"] = min(a["fim_final"], b["inicio_final"])
     return saida
 
 
 def tempos(plano, pasta=None):
-    """Converte a âncora de textos, imagens e sons em segundos do vídeo final."""
+    """Converte a âncora de textos, imagens, cartões e sons em segundos do vídeo final."""
     finais, total = linha_do_tempo(plano)
     por_id = {f["id"]: f for f in finais}
-    textos = _ancorar(plano["textos"], por_id, total)
-    if plano.get("modo_texto") == "transcricao" and pasta:
-        textos = legendas_da_fala(plano, pasta, finais) + textos
+    falas = palavras_finais(plano, pasta, finais)
+    avisos = []
+    textos = _ancorar(plano["textos"], por_id, total, falas, avisos=avisos)
+    legendas = []
+    if plano.get("modo_texto") == "transcricao" and falas:
+        legendas = legendas_da_fala(plano, falas)
     return {
         "textos": textos,
-        "imagens": _ancorar(plano["imagens"], por_id, total),
-        "cartoes": _ancorar(plano["cartoes"], por_id, total),
-        "sons": _ancorar(plano["sons"], por_id, total),
+        "legendas": legendas,
+        "imagens": _ancorar(plano["imagens"], por_id, total, falas, avisos=avisos),
+        "cartoes": _ancorar(plano["cartoes"], por_id, total, falas, avisos=avisos),
+        "sons": _ancorar(plano["sons"], por_id, total, falas, avisos=avisos),
         "total": total,
+        "avisos": avisos,
     }
 
 
 def tempos_dos_textos(plano, pasta=None):
     t = tempos(plano, pasta)
-    return t["textos"], t["total"]
+    return t["legendas"] + t["textos"], t["total"]

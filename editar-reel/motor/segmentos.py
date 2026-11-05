@@ -70,3 +70,34 @@ def segmentar(pasta, pausa=PAUSA):
     }
     caminho = salvar(pasta, plano)
     return caminho, trechos
+
+
+VICIOS = {"é", "éé", "ééé", "eh", "ah", "ãh", "ã", "hum", "hmm", "uhm", "tipo", "né", "então", "assim", "bom", "enfim", "ok"}
+
+
+def _limpo(texto):
+    return [w.strip(".,;:!?\"'").lower() for w in texto.split() if w.strip(".,;:!?\"'")]
+
+
+def sugerir_cortes(trechos):
+    """Aponta trechos que provavelmente saem: vício solto e tomada repetida."""
+    from difflib import SequenceMatcher
+    sugestoes = []
+    for t in trechos:
+        palavras = _limpo(t["fala"])
+        if palavras and all(p in VICIOS for p in palavras):
+            sugestoes.append(f"Trecho {t['id']}: só vício de fala (\"{t['fala']}\").")
+    for i, a in enumerate(trechos):
+        pa = _limpo(a["fala"])
+        if len(pa) < 2:
+            continue
+        for b in trechos[i + 1:i + 3]:
+            if b.get("video") != a.get("video"):
+                continue
+            pb = _limpo(b["fala"])
+            parecido = SequenceMatcher(None, " ".join(pa), " ".join(pb)).ratio()
+            mesmo_comeco = len(pb) >= 3 and pa[:3] == pb[:3]
+            if parecido > 0.6 or mesmo_comeco:
+                sugestoes.append(f"Trecho {a['id']}: parece tomada repetida do trecho {b['id']}; fica o {b['id']}.")
+                break
+    return sugestoes

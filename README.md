@@ -7,12 +7,12 @@ Você grava falando para a câmera, chama `/editar-reel` e recebe o vídeo pront
 ## O que ela faz
 
 1. **Transcreve no seu computador.** Nada vai para a internet, sem custo por vídeo.
-2. **Propõe os cortes.** Pausas, tomadas repetidas e frases que começaram erradas. Você aprova antes de qualquer corte.
+2. **Propõe os cortes.** Pausas, tomadas repetidas, vícios soltos e frases que começaram erradas, com sugestões automáticas. Você aprova antes de qualquer corte.
 3. **Junta vários vídeos.** Rosto e gravação de tela numa edição só, na ordem que você indicar.
 4. **Dá ritmo.** Alterna plano aberto e plano fechado a cada frase, com transições onde você pedir.
-5. **Coloca texto, imagens e sons.** Texto na tela em resumo ou legenda da fala, cartões ilustrativos com números e listas, prints flutuando e efeitos sonoros no momento exato.
+5. **Coloca texto, imagens e sons, animados.** Cada peça entra na palavra exata em que é dita: números que contam até o valor, listas que acendem item por item, legenda com a palavra ativa marcada, prints e cartões que sobem ou crescem na tela.
 6. **Segue referências de estilo.** Cores, fontes e prints de uma pasta `estilo/` valem para aquele vídeo.
-7. **Exporta em 9:16** e escreve a legenda do post. 1080x1920, pronto para Instagram, TikTok e Shorts.
+7. **Exporta em 9:16** com o volume no padrão das redes (-14 LUFS) e escreve a legenda do post. 1080x1920, pronto para Instagram, TikTok e Shorts.
 
 Depois é só pedir ajuste em texto: "corta a terceira frase", "abre pela frase do resultado", "troca a cor do destaque".
 

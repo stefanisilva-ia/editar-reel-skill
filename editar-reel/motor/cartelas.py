@@ -183,16 +183,24 @@ def desenhar(texto_cfg, estilo, destino):
             d.rounded_rectangle(caixa, radius=raio, outline=cor_dest, width=5)
         contorno, cor_contorno = 0, None
 
+    ativa = texto_cfg.get("ativa")
+    cor_apagada = cor_texto[:3] + (int(cor_texto[3] * 0.72),)
     y = topo
+    indice = 0
     for linha, w in linhas:
         x = (LARGURA - w) / 2
         for palavra, dest, pw in linha:
-            d.text(
-                (x, y), palavra, font=fonte,
-                fill=cor_dest if dest else cor_texto,
-                stroke_width=contorno, stroke_fill=cor_contorno,
-            )
+            if ativa is None:
+                cor = cor_dest if dest else cor_texto
+            elif indice == ativa:
+                cor = cor_dest if dest else cor_texto
+                barra_y = y + asc + max(6, tamanho // 10)
+                d.rounded_rectangle([x, barra_y, x + pw, barra_y + max(4, tamanho // 14)], radius=3, fill=cor_dest)
+            else:
+                cor = cor_dest if dest else cor_apagada
+            d.text((x, y), palavra, font=fonte, fill=cor, stroke_width=contorno, stroke_fill=cor_contorno)
             x += pw + espaco
+            indice += 1
         y += altura_linha
 
     img.save(destino)
@@ -240,7 +248,7 @@ def desenhar_imagem(im_cfg, estilo, destino):
     return destino
 
 
-def desenhar_cartao(cfg, estilo, destino):
+def desenhar_cartao(cfg, estilo, destino, valor=None, visiveis=None):
     """Cartão ilustrativo gerado na identidade do estilo ativo.
 
     tipo "numero":  {"valor": "10h", "rotulo": "economizadas por semana"}
@@ -263,7 +271,7 @@ def desenhar_cartao(cfg, estilo, destino):
     linhas = []  # (texto, fonte, cor, alinhamento, espaço depois)
 
     if tipo == "numero":
-        valor = str(cfg["valor"])
+        valor = str(cfg["valor"]) if valor is None else valor
         tam = 190 if len(valor) <= 5 else 140
         linhas.append(([(valor, True)], _fonte(caminho_fonte, tam), "centro", 18))
         if cfg.get("rotulo"):
@@ -281,7 +289,9 @@ def desenhar_cartao(cfg, estilo, destino):
                 linhas.append(([(linha, False)], f, "esquerda", 8))
             linhas[-1] = (*linhas[-1][:3], 34)
         f = _fonte(caminho_fonte, 50)
-        for item in cfg["itens"]:
+        for k, item in enumerate(cfg["itens"]):
+            if visiveis is not None and k >= visiveis:
+                item = "\u200b"
             partes = item.split(maxsplit=1)
             if len(partes) == 2 and ORDINAL.match(partes[0]):
                 linhas.append(([(partes[0] + " ", True), (partes[1], False)], f, "esquerda", 22))
@@ -332,3 +342,30 @@ def _quebrar_texto(texto, fonte, d, largura_max):
     if atual:
         linhas.append(atual)
     return linhas
+
+
+NUMERO_CONTAVEL = re.compile(r"^(\D*?)(\d{1,3}(?:\.\d{3})+|\d+)(,\d+)?(.*)$")
+
+
+def quadros_do_contador(valor, quadros=20):
+    """Valores intermediários para o número subir até o final. None se não der para contar."""
+    m = NUMERO_CONTAVEL.match(str(valor))
+    if not m:
+        return None
+    prefixo, inteiro, decimal, sufixo = m.groups()
+    milhar = "." in inteiro
+    alvo = float(inteiro.replace(".", "") + ("." + decimal[1:] if decimal else ""))
+    casas = len(decimal) - 1 if decimal else 0
+    if alvo < 2 or re.search(r"\d", sufixo):
+        return None
+    saida = []
+    for i in range(quadros):
+        p = (i + 1) / quadros
+        atual = alvo * (1 - (1 - p) ** 3)
+        parte_int = int(atual) if casas else int(round(atual))
+        texto = f"{parte_int:,}".replace(",", "." if milhar else "")
+        if casas:
+            texto += "," + f"{atual:.{casas}f}".split(".")[1]
+        saida.append(f"{prefixo}{texto}{sufixo}")
+    saida[-1] = str(valor)
+    return saida

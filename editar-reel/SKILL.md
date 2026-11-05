@@ -51,7 +51,7 @@ Com um vídeo, cria `<nome-do-video>-reel/` ao lado dele. Com vários, passe tod
 ### 3. Cortar (com aprovação)
 `reel segmentar PASTA`
 
-Gera o `plano.json` com a fala dividida em trechos numerados (com vários vídeos, cada trecho mostra de qual veio). Proponha o que sai, uma linha por item:
+Gera o `plano.json` com a fala dividida em trechos numerados (com vários vídeos, cada trecho mostra de qual veio). O comando também lista **sugestões de corte** (vício solto, tomada repetida): use como ponto de partida, não como decisão. Proponha o que sai, uma linha por item:
 - tomada repetida (fica a melhor, normalmente a última);
 - frase que começou errada e foi refeita;
 - vício solto num trecho sozinho ("então", "né", "tipo");
@@ -62,7 +62,16 @@ Se a frase mais forte está no meio, proponha abrir por ela: preencha `"ordem": 
 **Espere a aprovação.** Só então marque `"manter": false` nos trechos que saem.
 
 ### 4. Montar o plano
-Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continua no lugar certo mesmo se os cortes mudarem. `atraso` (segundos depois do início do trecho) acerta o momento exato, por exemplo quando a palavra é dita: confira o tempo da palavra no `transcricao.json`.
+Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continua no lugar certo mesmo se os cortes mudarem.
+- **`"palavra": "painel"`**: o item entra no instante em que essa palavra (ou expressão) é dita dentro do trecho. Prefira sempre a palavra: a peça entra junto com a fala, e o tempo se ajusta sozinho se a velocidade ou os cortes mudarem.
+- `atraso`: segundos a mais depois da palavra (ou do início do trecho, sem palavra).
+- `validar` avisa quando uma palavra não foi encontrada.
+
+**Animação** (padrão ligado; `"animacao": false` no plano desliga tudo e deixa só o fade):
+- `"entrada"` em qualquer texto, print ou cartão: `sobe` (sobe e aparece, padrão de blocos, prints e cartões de lista), `pop` (cresce com um leve rebote, padrão da capa, da chamada e do cartão de número) ou `fade`.
+- Cartão de número **conta** de zero até o valor (10h, 1.534, R$ 2.500, 98%). `"contar": false` desliga.
+- Cartão de lista **acende item por item**. `"palavras": ["atende", "agenda", "confirma"]` faz cada item entrar quando a palavra é dita; sem isso, entram em passos regulares. `"som_itens": true` toca um click em cada item.
+- Legenda no modo transcrição marca a **palavra ativa** com um sublinhado na cor de destaque enquanto ela é dita. `"legenda": {"palavra_ativa": false}` desliga.
 
 **Modo do texto** (`"modo_texto"`): escolha da pessoa, por pedido.
 - `resumo` (padrão): você escreve os blocos em `"textos"` seguindo as regras de resumo abaixo.
@@ -85,7 +94,7 @@ Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continu
 
 **Prints** (`"imagens"`):
 ```json
-{"arquivo": "/caminho/prints/painel.png", "trecho": 3, "atraso": 0.5, "credito": "fonte: site.com"}
+{"arquivo": "/caminho/prints/painel.png", "trecho": 3, "palavra": "painel", "credito": "fonte: site.com"}
 ```
 - Entra flutuando, com cantos arredondados e sombra. `largura` (padrão 860), `posicao` (padrão `centro`), `ate_trecho`, `duracao`.
 - Print com texto na tela no mesmo momento: ponha o texto em `alto` ou `baixo` para não sobrepor.
@@ -93,8 +102,8 @@ Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continu
 
 **Cartões ilustrativos** (`"cartoes"`): imagens geradas pela skill, na identidade do estilo ativo, para ilustrar o que está sendo falado.
 ```json
-{"tipo": "numero", "valor": "10h", "rotulo": "economizadas por semana", "trecho": 3, "atraso": 1.2}
-{"tipo": "lista", "titulo": "O que o agente faz", "itens": ["1º atende", "2º agenda", "3º confirma"], "trecho": 5}
+{"tipo": "numero", "valor": "10h", "rotulo": "economizadas por semana", "trecho": 3, "palavra": "10"}
+{"tipo": "lista", "titulo": "O que o agente faz", "itens": ["1º atende", "2º agenda", "3º confirma"], "palavras": ["atende", "agenda", "confirma"], "som_itens": true, "trecho": 5}
 {"tipo": "palavra", "texto": "automação", "trecho": 7}
 ```
 - `numero`: um dado ou resultado falado. `lista`: quando a fala enumera (até 4 itens, numerados com 1º, 2º). `palavra`: um conceito central.
@@ -104,7 +113,7 @@ Tudo que entra no vídeo fica preso a um trecho (`"trecho": id`), então continu
 
 **Efeitos sonoros** (`"sons"`):
 ```json
-{"arquivo": "/caminho/sons/pop.wav", "trecho": 3, "atraso": 0.5, "volume": 0.7}
+{"arquivo": "/caminho/sons/pop.wav", "trecho": 3, "palavra": "10", "volume": 0.7}
 ```
 - Toca por cima da fala, sem mudar de velocidade. `volume` de 0 a 1 (padrão 0.8).
 - Sons da skill: `reel sons` cria e lista pop, click, ding, impacto e whoosh (sintetizados, sem direitos autorais), com o uso indicado de cada um.
@@ -158,7 +167,7 @@ Mostra a duração final e a linha do tempo de textos, prints e sons. Corrija o 
 ### 6. Renderizar
 `reel renderizar PASTA`
 
-Gera `reel-final.mp4` na pasta: 1080x1920, 30 fps. Vídeo horizontal é recortado pelo centro. Vídeo HDR do iPhone é convertido para cor normal. Vídeos de tamanhos ou taxas diferentes são padronizados.
+Gera `reel-final.mp4` na pasta: 1080x1920, 30 fps, com o volume padronizado em -14 LUFS (o padrão das redes; `"volume_padrao": false` desliga). Vídeo horizontal é recortado pelo centro. Vídeo HDR do iPhone é convertido para cor normal. Vídeos de tamanhos ou taxas diferentes são padronizados.
 
 ### 7. Conferir
 `reel quadros PASTA`
