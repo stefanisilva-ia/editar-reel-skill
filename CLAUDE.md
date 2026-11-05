@@ -57,6 +57,7 @@ Depois abra 3 ou 4 PNGs de `/tmp/teste-reel/reel/quadros/` e olhe de verdade: te
 
 ## Limitações conhecidas e ideias em aberto
 - Transcrição depende de baixar o modelo na primeira vez (precisa de internet).
+- `av<19` fica travado no requirements: o PyAV 19 quebra a leitura de áudio do faster-whisper 1.2.x. Só remover a trava depois de testar uma versão nova do faster-whisper com o PyAV 19.
 - Fonte por nome precisa estar instalada no sistema; senão cai numa fonte padrão com aviso.
 - Ideia: inserir cenas renderizadas pela motion-reel entre trechos (`insercoes` no plano).
 - Ideia: overlay de vídeo com transparência (.mov da motion-reel) como camada.
