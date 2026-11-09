@@ -1,0 +1,8 @@
+{
+  "_sobre": "Fundo escuro, telas e cartões técnicos, ritmo rápido. Descrição completa em escuro-tecnico.md.",
+  "fundos": {"padrao": "verde-noite", "brilho": 0.12, "arco": true},
+  "cartoes": {"escuro": {"cor": "#07544AE6", "borda": "#289A8B66", "raio": 28}},
+  "prints": {"borda": 2, "cor_borda": "#289A8B", "raio": 24, "inclinacao": 0},
+  "manchete": {"modelo": "solta"},
+  "legenda": {"palavras_por_bloco": 2}
+}

@@ -1,0 +1,11 @@
+{
+  "_sobre": "Fundo claro, cartões de vidro, fundo muda com a emoção do trecho. Descrição completa em claro-vidro.md.",
+  "fundos": {"padrao": "off-white", "brilho": 0.14, "arco": false},
+  "cartoes": {
+    "claro": {"cor": "#FFFFFFD9", "borda": "#FFFFFFFF", "raio": 32},
+    "escuro": {"cor": "#07544AE6", "borda": "#289A8B66", "raio": 32}
+  },
+  "prints": {"borda": 0, "raio": 28, "inclinacao": 0},
+  "manchete": {"modelo": "solta"},
+  "legenda": {"palavras_por_bloco": 2}
+}

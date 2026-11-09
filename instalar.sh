@@ -23,12 +23,21 @@ if [ -z "$PY" ]; then
 fi
 
 mkdir -p "$DESTINO"
-# Atualiza os arquivos e mantém a .venv e o seu estilo-padrao.json.
+# Atualiza os arquivos e mantém a .venv, o seu estilo-padrao.json e as receitas que você criou.
 GUARDADO=""
 if [ -f "$DESTINO/estilo-padrao.json" ]; then GUARDADO="$(mktemp)"; cp "$DESTINO/estilo-padrao.json" "$GUARDADO"; fi
+RECEITAS=""
+if [ -d "$DESTINO/estilos" ]; then RECEITAS="$(mktemp -d)"; cp -R "$DESTINO/estilos/." "$RECEITAS/"; fi
 find "$DESTINO" -mindepth 1 -maxdepth 1 ! -name ".venv" -exec rm -rf {} +
 cp -R "$ORIGEM/." "$DESTINO/"
 if [ -n "$GUARDADO" ]; then cp "$GUARDADO" "$DESTINO/estilo-padrao.json"; rm -f "$GUARDADO"; echo "Mantive o seu estilo-padrao.json."; fi
+if [ -n "$RECEITAS" ]; then
+  for arq in "$RECEITAS"/*; do
+    [ -e "$arq" ] || continue
+    if [ ! -e "$DESTINO/estilos/$(basename "$arq")" ]; then cp "$arq" "$DESTINO/estilos/"; echo "Mantive a sua receita $(basename "$arq")."; fi
+  done
+  rm -rf "$RECEITAS"
+fi
 
 if [ ! -x "$DESTINO/.venv/bin/python" ]; then
   "$PY" -m venv "$DESTINO/.venv"
