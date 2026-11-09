@@ -61,7 +61,7 @@ def segmentar(pasta, pausa=PAUSA):
         "saida": "reel-final.mp4",
         "velocidade": 1.0,
         "zoom": {"ativo": True, "fator": 1.12, "altura_rosto": 0.35},
-        "modo_texto": "resumo",
+        "modo_texto": "transcricao",
         "estilo": {},
         "trechos": trechos,
         "textos": [],

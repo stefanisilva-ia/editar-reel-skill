@@ -9,3 +9,6 @@ __pycache__/
 *-reel/
 !/editar-reel/
 sons-basicos/
+# Vídeos e folhas de referência de terceiros: ficam só no seu computador
+referencias/
+*-referencia/

@@ -9,19 +9,30 @@ Você grava falando para a câmera, chama `/editar-reel` e recebe o vídeo pront
 1. **Transcreve no seu computador.** Nada vai para a internet, sem custo por vídeo.
 2. **Propõe os cortes.** Pausas, tomadas repetidas, vícios soltos e frases que começaram erradas, com sugestões automáticas. Você aprova antes de qualquer corte.
 3. **Junta vários vídeos.** Rosto e gravação de tela numa edição só, na ordem que você indicar.
-4. **Dá ritmo.** Alterna plano aberto e plano fechado a cada frase, com transições onde você pedir.
-5. **Coloca texto, imagens e sons, animados.** Cada peça entra na palavra exata em que é dita: números que contam até o valor, listas que acendem item por item, legenda com a palavra ativa marcada, prints e cartões que sobem ou crescem na tela.
-6. **Segue referências de estilo.** Cores, fontes e prints de uma pasta `estilo/` valem para aquele vídeo.
-7. **Exporta em 9:16** com o volume no padrão das redes (-14 LUFS) e escreve a legenda do post. 1080x1920, pronto para Instagram, TikTok e Shorts.
+4. **Decide o visual de cada trecho.** Alterna três formatos conforme o que você fala: tela cheia com você, tela dividida (você embaixo, o exemplo em cima) e só gráficos com legenda. Antes de renderizar, mostra o mapa visual para você aprovar.
+5. **Legenda da fala que acende palavra por palavra**, com as palavras-chave em Playfair Display Italic, palavra de alerta em vermelho e caixa na palavra principal.
+6. **Coloca peças animadas na palavra exata em que são ditas:** prints com círculo, caixa, marca-texto e seta que se desenham, números que contam, listas e etapas que acendem, comparação antes e agora, palavra solta grande, manchete por seção e selo de série.
+7. **Segue receitas de estilo.** Três prontas (escuro técnico, claro vidro, print anotado), que podem ser combinadas, e novas criadas a partir de um vídeo de referência.
+8. **Exporta em 9:16** com o volume no padrão das redes (-14 LUFS) e escreve a legenda do post. 1080x1920, pronto para Instagram, TikTok e Shorts.
 
 Depois é só pedir ajuste em texto: "corta a terceira frase", "abre pela frase do resultado", "troca a cor do destaque".
 
-## Texto na tela: resumo ou legenda
+## Os três formatos
 
-Você escolhe, a cada vídeo:
+| Formato | O que aparece | Quando a skill usa |
+|---|---|---|
+| **A. Tela cheia** | você, com a legenda na altura do peito | opinião, alerta, fala direta, virada, chamada final |
+| **B. Tela dividida** | fundo de cena com o exemplo em cima, você num painel embaixo | explicar como funciona, mostrar print, provar |
+| **C. Só gráficos** | fundo de cena, a peça e a legenda grande, sem você | processo, lista, número, conceito |
 
-- **Resumo** (padrão): a fala vira blocos curtos, que quem assiste sem som entende em um segundo.
-- **Transcrição**: legenda sincronizada com a fala, palavra por palavra, só dos trechos que ficaram.
+A escolha segue o conteúdo, não uma sequência fixa. As regras estão em `editar-reel/direcao-visual.md`: abrir em tela dividida, fechar em tela cheia, no máximo 6 s seguidos sem o seu rosto e rosto em pelo menos metade do vídeo.
+
+Os fundos alternam entre verdes, off-white, areia e bege, mais um vermelho para momentos de erro.
+
+## Texto na tela: legenda ou resumo
+
+- **Legenda da fala** (padrão): sincronizada palavra por palavra, só dos trechos que ficaram. Cada palavra acende quando é dita.
+- **Resumo** (se você pedir): a fala vira blocos curtos, que quem assiste sem som entende em um segundo.
 
 No modo resumo, a skill segue regras fixas:
 
@@ -88,7 +99,7 @@ Quanto mais claro o pedido, menos perguntas o Claude faz. Um bom pedido diz **on
 ```
 reel-painel/
 ├── videos/   01-abertura.mov   02-tela.mov
-├── prints/   painel.png   whatsapp.png
+├── imagens/  painel.png   whatsapp.png
 ├── sons/     pop.wav   whoosh.mp3
 └── estilo/   referencia.png   MinhaFonte-Bold.ttf   cores.md   (opcional)
 ```
@@ -102,13 +113,13 @@ reel-painel/
 É pro Instagram, palavra-chave AGENTE. Acelera 1.1.
 ```
 
-> **O que faz:** transcreve, propõe os cortes, monta o texto na tela e a chamada "comenta AGENTE". **Adapte:** troque a palavra-chave e tire o "acelera" se quiser a fala no ritmo original.
+> **O que faz:** transcreve, propõe os cortes, mostra o mapa visual, monta a legenda e a chamada "comenta AGENTE". **Adapte:** troque a palavra-chave e tire o "acelera" se quiser a fala no ritmo original.
 
 ### 2. Com prints de uma pasta
 
 ```
 /editar-reel o vídeo está em ~/reel-painel/videos/01-abertura.mov.
-Os prints estão em ~/reel-painel/prints.
+Os prints estão em ~/reel-painel/imagens.
 Quando eu falar "painel", mostra o painel.png.
 Quando eu falar "WhatsApp", mostra o whatsapp.png até o fim da frase.
 Coloca o crédito "print: sistema do cliente" embaixo dos dois.
@@ -149,19 +160,40 @@ e o whoosh.mp3 na entrada do print. Volume baixo nos dois.
 6. Escreve a legenda do post com 3 hashtags.
 ```
 
-> **O que faz:** tudo de uma vez. O Claude ainda mostra os cortes e as opções de capa para você aprovar antes de renderizar. **Adapte:** numere os pedidos, um por linha. Fica mais fácil para você revisar e para o Claude seguir.
+> **O que faz:** tudo de uma vez. O Claude ainda mostra os cortes e o mapa visual para você aprovar antes de renderizar. **Adapte:** numere os pedidos, um por linha. Fica mais fácil para você revisar e para o Claude seguir.
 
-### 6. Com legenda da fala
+### 6. Ajustando a legenda
 
 ```
 /editar-reel o vídeo está em ~/Downloads/tutorial.MOV.
-Quero legenda transcrevendo a fala, 3 palavras por vez.
-Corrige "cloud code" para "Claude Code". Palavra-chave GUIA.
+Legenda com 3 palavras por vez.
+Corrige "cloud code" para "Claude Code" e destaca "automação".
+Palavra-chave GUIA.
 ```
 
-> **O que faz:** gera a legenda sincronizada com o que você fala, já sem os trechos cortados, e mantém a capa e a chamada final. **Adapte:** menos palavras por vez deixa mais dinâmico. Para voltar ao resumo, peça "resume a fala".
+> **O que faz:** gera a legenda sincronizada com o que você fala, já sem os trechos cortados, com "Claude Code" sempre junto e "automação" em Playfair dourada. **Adapte:** menos palavras por vez deixa mais dinâmico. Para trocar pela versão resumida, peça "resume a fala".
 
-### 7. Com referência de estilo
+### 7. Com tela dividida e receita
+
+```
+/editar-reel pasta do projeto: ~/reel-skills
+Usa a receita escuro-tecnico com os prints da print-anotado.
+É o episódio 3 de 7 da série "Claude na prática".
+Quando eu falar "botão", circula o botão no painel.png.
+Palavra-chave SKILL.
+```
+
+> **O que faz:** depois dos cortes, mostra o mapa visual com o formato, o fundo e as peças de cada trecho. Com a sua aprovação, renderiza com o selo da série, a manchete de cada seção e o print com o círculo se desenhando na palavra "botão". **Adapte:** sem receita, a skill escolhe pelo assunto. Para mudar um trecho, diga "essa parte só gráfico" ou "fundo claro aqui".
+
+### 8. Criando uma receita a partir de uma referência
+
+```
+/editar-reel cria uma receita dessa referência: ~/referencias/video-que-gostei.mp4
+```
+
+> **O que faz:** tira quadros do vídeo, analisa composição, legenda, cores, peças e ritmo e escreve uma receita nova na sua paleta. O vídeo de referência não entra na skill, só a receita. **Adapte:** guarde as referências numa pasta `referencias/` no seu computador.
+
+### 9. Com referência de estilo
 
 ```
 /editar-reel pasta do projeto: ~/reel-campanha
@@ -180,7 +212,7 @@ fonte: Montserrat
 
 > **O que faz:** lê as cores, a fonte e as imagens de referência e aplica só neste vídeo. Antes de renderizar, o Claude diz qual estilo vai usar. **Adapte:** sem `cores.md`, as cores saem das imagens. Para mudar o seu visual de sempre, peça "salva esse estilo como padrão".
 
-### 8. Deixando o Claude decidir
+### 10. Deixando o Claude decidir
 
 ```
 /editar-reel o vídeo está em ~/reels/agentes/video.mov.
@@ -204,13 +236,17 @@ Peça em texto, como faria com um editor:
 | Pedido | O que muda |
 |---|---|
 | `corta a terceira frase` | remove o trecho e renderiza de novo |
+| `essa parte em tela dividida` | troca o formato do trecho |
+| `só gráfico quando eu falar das etapas` | troca o formato e coloca o fluxo |
+| `fundo areia nessa parte` | troca o fundo do trecho |
+| `circula o botão no print` | acrescenta a marcação |
 | `troca o texto "pronto em 1 dia" por "pronto em 24h"` | só o texto na tela |
 | `tira o print do WhatsApp` | remove a imagem |
 | `som mais baixo` | reduz o volume dos efeitos |
 | `sem zoom nos cortes` | desliga a alternância de plano |
 | `muda o destaque para #dfac16` | troca a cor dos números e palavras-chave |
 | `refaz a legenda do post, mais curta` | reescreve o `legenda.txt` |
-| `troca o resumo por legenda da fala` | muda o modo do texto |
+| `resume a fala em vez de legendar` | muda o modo do texto |
 | `texto sem caixa, em maiúsculas` | muda o estilo só deste vídeo |
 
 ### O que cada transição faz
@@ -227,27 +263,29 @@ Peça em texto, como faria com um editor:
 - Fale olhando para a câmera e respire entre as frases. A pausa vira ponto de corte.
 - Errou? Repita a frase inteira. A skill identifica a repetição e propõe ficar com a melhor.
 - Diga números e resultados em voz alta. Eles viram destaque na tela.
-- Grave na vertical, com o rosto no terço de cima do quadro.
+- Grave na vertical, com o rosto no terço de cima do quadro. Na tela dividida, o painel mostra rosto e ombros.
 
 ## Estilo
 
-O visual de sempre fica em `editar-reel/estilo-padrao.json` (já vem com verde, dourado e Montserrat). Troque pelos seus valores; as atualizações da skill mantêm esse arquivo.
+O visual de sempre fica em `editar-reel/estilo-padrao.json` (já vem com verde, dourado, Montserrat, Playfair Display e DM Sans). Troque pelos seus valores; as atualizações da skill mantêm esse arquivo.
 
 ```json
 {
   "cor_texto": "#FFFFFF",
   "cor_destaque": "#DFAC16",
-  "cor_caixa": "#03332CD9",
-  "caixa": true,
+  "cor_texto_claro": "#111111",
+  "cor_destaque_claro": "#07544A",
+  "cor_alerta": "#C9473A",
+  "cor_apoio": "#289A8B",
   "fonte": "Montserrat",
-  "tamanho": 68,
-  "maiusculas": false
+  "fonte_destaque": "Playfair Display",
+  "fonte_rotulo": "DM Sans"
 }
 ```
 
-Para um vídeo com outro visual, use a pasta `estilo/` (exemplo 7). O que você pedir em texto vale mais que a pasta, e a pasta vale mais que o padrão.
+As receitas em `editar-reel/estilos/` definem fundos, cartões, prints e manchete. Para um vídeo com outro visual, use a pasta `estilo/` (exemplo 9). O que você pedir em texto vale mais que a pasta, a pasta vale mais que a receita, e a receita vale mais que o padrão.
 
-A fonte pode ser o nome de uma fonte instalada no computador ou um arquivo `.ttf`/`.otf`. Montserrat é gratuita no Google Fonts.
+As fontes vêm com a skill, na pasta `editar-reel/fontes/` (Montserrat, Playfair Display e DM Sans, todas com licença OFL). Você também pode usar o nome de uma fonte instalada ou um arquivo `.ttf`/`.otf`.
 
 ## Atualizar
 
@@ -257,24 +295,30 @@ Rode o instalador de novo, ou peça no Claude Code:
 Atualiza a skill editar-reel a partir de https://github.com/stefanisilva-ia/editar-reel-skill
 ```
 
-O instalador troca os arquivos da skill e mantém as bibliotecas já baixadas e o seu `estilo-padrao.json`.
+O instalador troca os arquivos da skill e mantém as bibliotecas já baixadas, o seu `estilo-padrao.json` e as receitas que você criou.
 
 ## Estrutura
 
 | Arquivo | Função |
 |---|---|
 | `editar-reel/SKILL.md` | Passo a passo e regras que o Claude segue |
-| `editar-reel/motor/cli.py` | Comandos: checar, transcrever, segmentar, estilo, sons, validar, renderizar, quadros |
+| `editar-reel/direcao-visual.md` | Quando usar cada formato, ritmo, legenda, cores, peças e sons |
+| `editar-reel/estilos/` | Receitas de estilo (`.json` para o motor, `.md` com a descrição) |
+| `editar-reel/fontes/` | Montserrat, Playfair Display e DM Sans, com as licenças |
+| `editar-reel/estilo-padrao.json` | O seu visual de sempre |
+| `editar-reel/motor/cli.py` | Comandos: checar, transcrever, segmentar, estilo, sons, receitas, referencia, mapa, validar, cartelas, renderizar, quadros |
 | `editar-reel/motor/transcricao.py` | Transcrição local com o tempo de cada palavra |
 | `editar-reel/motor/segmentos.py` | Divide a fala em trechos e cria o plano |
-| `editar-reel/motor/plano.py` | Valida o plano e calcula a linha do tempo final |
-| `editar-reel/motor/cartelas.py` | Desenha o texto na tela, os prints e os cartões |
+| `editar-reel/motor/plano.py` | Valida o plano, calcula a linha do tempo, o ritmo e o mapa visual |
+| `editar-reel/motor/visual.py` | Formatos, fundos de cena, cores por fundo e receitas |
+| `editar-reel/motor/cartelas.py` | Legenda, manchete, chamada, selo, palavra solta e cartões |
+| `editar-reel/motor/prints.py` | Prints com moldura, pílula e marcações |
+| `editar-reel/motor/referencia.py` | Folhas de quadros de um vídeo de referência |
 | `editar-reel/motor/estilo.py` | Lê a pasta de referências de estilo |
 | `editar-reel/motor/sons.py` | Cria os efeitos sonoros básicos |
-| `editar-reel/estilo-padrao.json` | O seu visual de sempre |
-| `editar-reel/motor/render.py` | Corta, enquadra, dá ritmo e exporta |
+| `editar-reel/motor/render.py` | Monta cada formato, junta, anima as peças e exporta |
 | `instalar.sh` e `instalar.ps1` | Instaladores |
 
 ## Licença
 
-MIT. Pode usar, adaptar e compartilhar.
+MIT. Pode usar, adaptar e compartilhar. As fontes da pasta `editar-reel/fontes/` seguem a licença OFL de cada uma, que acompanha os arquivos.

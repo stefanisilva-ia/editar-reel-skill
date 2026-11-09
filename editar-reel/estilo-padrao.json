@@ -2,11 +2,17 @@
   "_sobre": "Estilo usado quando o pedido não traz referências nem uma pasta estilo/. Troque pelos seus valores. O instalador mantém este arquivo nas atualizações.",
   "cor_texto": "#FFFFFF",
   "cor_destaque": "#DFAC16",
+  "cor_texto_claro": "#111111",
+  "cor_destaque_claro": "#07544A",
+  "cor_alerta": "#C9473A",
+  "cor_apoio": "#289A8B",
   "cor_caixa": "#03332CD9",
   "cor_contorno": "#000000",
   "caixa": true,
   "raio": 24,
   "fonte": "Montserrat",
+  "fonte_destaque": "Playfair Display",
+  "fonte_rotulo": "DM Sans",
   "tamanho": 68,
   "maiusculas": false
 }

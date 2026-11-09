@@ -1,0 +1,7 @@
+{
+  "_sobre": "Prints reais com marcações e manchete fixa por seção. Descrição completa em print-anotado.md.",
+  "fundos": {"padrao": "off-white", "brilho": 0.10, "arco": false},
+  "prints": {"borda": 6, "cor_borda": "#289A8B", "raio": 24, "inclinacao": 2},
+  "manchete": {"modelo": "etiqueta"},
+  "legenda": {"palavras_por_bloco": 2}
+}

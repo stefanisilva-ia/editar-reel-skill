@@ -24,13 +24,26 @@ if (-not $Py) {
 }
 
 New-Item -ItemType Directory -Force -Path $Destino | Out-Null
-# Atualiza os arquivos e mantém a .venv e o seu estilo-padrao.json.
+# Atualiza os arquivos e mantém a .venv, o seu estilo-padrao.json e as receitas que você criou.
 $EstiloArq = Join-Path $Destino 'estilo-padrao.json'
 $Guardado = $null
 if (Test-Path $EstiloArq) { $Guardado = Get-Content -Raw $EstiloArq }
+$PastaReceitas = Join-Path $Destino 'estilos'
+$Receitas = $null
+if (Test-Path $PastaReceitas) {
+    $Receitas = Join-Path ([System.IO.Path]::GetTempPath()) ('receitas-' + [guid]::NewGuid())
+    Copy-Item -Recurse -Force $PastaReceitas $Receitas
+}
 Get-ChildItem -Force $Destino | Where-Object { $_.Name -ne '.venv' } | Remove-Item -Recurse -Force
 Copy-Item -Recurse -Force (Join-Path $Origem '*') $Destino
 if ($Guardado) { Set-Content -NoNewline -Encoding UTF8 -Path $EstiloArq -Value $Guardado; Write-Host 'Mantive o seu estilo-padrao.json.' }
+if ($Receitas) {
+    Get-ChildItem $Receitas | ForEach-Object {
+        $Alvo = Join-Path $PastaReceitas $_.Name
+        if (-not (Test-Path $Alvo)) { Copy-Item $_.FullName $Alvo; Write-Host "Mantive a sua receita $($_.Name)." }
+    }
+    Remove-Item -Recurse -Force $Receitas
+}
 
 $VenvPy = Join-Path $Destino '.venv\Scripts\python.exe'
 if (-not (Test-Path $VenvPy)) { & $Py -m venv (Join-Path $Destino '.venv') }
